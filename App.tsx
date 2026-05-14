@@ -1,10 +1,10 @@
-// === NEW === Day 8 — welcome screen for fitness-app
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+// === NEW === import design tokens
+import { colors, spacing, radius, typography } from './theme';
 
 export default function App() {
   const handleGetStarted = () => {
-    // === NEW === will wire up navigation in later days
     console.log('Get Started tapped');
   };
 
@@ -28,52 +28,45 @@ export default function App() {
   );
 }
 
+// === CHANGED === all hardcoded values replaced with tokens
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
-    paddingHorizontal: 24,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
     paddingTop: 100,
-    paddingBottom: 40,
+    paddingBottom: spacing.xl,
     justifyContent: 'space-between',
   },
   content: {
-    marginTop: 40,
+    marginTop: spacing.xl,
   },
   eyebrow: {
-    color: '#ffb800',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 2,
-    marginBottom: 24,
+    ...typography.caption,
+    color: colors.accent,
+    marginBottom: spacing.lg,
   },
   title: {
-    color: '#fff',
-    fontSize: 52,
-    fontWeight: '800',
-    lineHeight: 60,
+    ...typography.display,
+    color: colors.textPrimary,
   },
   titleAccent: {
-    color: '#ffb800',
-    fontSize: 52,
-    fontWeight: '800',
-    lineHeight: 60,
-    marginBottom: 24,
+    ...typography.display,
+    color: colors.accent,
+    marginBottom: spacing.lg,
   },
   subtitle: {
-    color: '#aaa',
-    fontSize: 16,
-    lineHeight: 24,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   button: {
-    backgroundColor: '#ffb800',
+    backgroundColor: colors.accent,
     paddingVertical: 18,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#0a0a0a',
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.button,
+    color: colors.onAccent,
   },
 });
