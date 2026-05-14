@@ -1,17 +1,12 @@
-// === NEW === onboarding step 1 — user picks their primary goal
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../../theme';
+// === NEW === import context hook + Goal type
+import { useOnboarding, Goal } from '../../context/onboarding';
 
-type Goal = 'bulk' | 'lean' | 'exploring';
-
-type GoalOption = {
-  id: Goal;
-  title: string;
-  description: string;
-};
+type GoalOption = { id: Goal; title: string; description: string };
 
 const GOALS: GoalOption[] = [
   { id: 'bulk', title: 'Bulk up', description: 'Gain weight and muscle as fast as possible' },
@@ -21,13 +16,15 @@ const GOALS: GoalOption[] = [
 
 export default function GoalScreen() {
   const router = useRouter();
+  // === NEW === read setter from context
+  const { setGoal } = useOnboarding();
   const [selected, setSelected] = useState<Goal | null>(null);
 
+  // === CHANGED === save to context + navigate
   const handleContinue = () => {
     if (!selected) return;
-    console.log('Goal selected:', selected);
-    // === NEW === next onboarding screen comes Day 10
-    // router.push('/onboarding/stats');
+    setGoal(selected);
+    router.push('/onboarding/stats');
   };
 
   return (
@@ -47,9 +44,7 @@ export default function GoalScreen() {
                 onPress={() => setSelected(goal.id)}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>
-                  {goal.title}
-                </Text>
+                <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{goal.title}</Text>
                 <Text style={styles.cardDescription}>{goal.description}</Text>
               </TouchableOpacity>
             );
@@ -57,12 +52,7 @@ export default function GoalScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.button, !selected && styles.buttonDisabled]}
-        onPress={handleContinue}
-        disabled={!selected}
-        activeOpacity={0.85}
-      >
+      <TouchableOpacity style={[styles.button, !selected && styles.buttonDisabled]} onPress={handleContinue} disabled={!selected} activeOpacity={0.85}>
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
 
