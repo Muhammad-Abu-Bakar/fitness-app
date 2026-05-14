@@ -1,42 +1,37 @@
-// === NEW === pull in food log to compute today's totals
-import { useFoodLog, getTodayDateString } from '../context/foodLog';
-// === CHANGED === full rewrite — now the real dashboard, not a stub
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useOnboarding } from '../context/onboarding';
-// === NEW === pulls in the math from Step 1
 import { calculateTargets } from '../lib/nutrition';
+import { useFoodLog, getTodayDateString } from '../context/foodLog';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
-  // === NEW === pull today's totals from food log
+
   const { getTotalsForDate, getEntriesForDate, deleteEntry } = useFoodLog();
   const todayTotals = getTotalsForDate(getTodayDateString());
   const todayEntries = getEntriesForDate(getTodayDateString());
-  // === NEW === compute targets — memoized so it only recalculates when inputs change
+
   const targets = useMemo(() => {
     if (
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) {
-      return null; 
+      return null;
     }
     return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
   }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
 
-  // === NEW === defensive — shouldn't happen because of auto-redirect, but TS likes it
   if (!targets) return null;
-   // === NEW === compute remaining and progress percentages
-   const caloriesLeft = Math.max(targets.calories - todayTotals.calories, 0);
-   const proteinLeft = Math.max(targets.protein - todayTotals.protein, 0);
-   const calorieProgress = Math.min(todayTotals.calories / targets.calories, 1);
-   const proteinProgress = Math.min(todayTotals.protein / targets.protein, 1);
 
-  // === NEW === friendly label for surplus line
+  const caloriesLeft = Math.max(targets.calories - todayTotals.calories, 0);
+  const proteinLeft = Math.max(targets.protein - todayTotals.protein, 0);
+  const calorieProgress = Math.min(todayTotals.calories / targets.calories, 1);
+  const proteinProgress = Math.min(todayTotals.protein / targets.protein, 1);
+
   const surplusLabel =
     goal === 'bulk' ? 'Bulk surplus' :
     goal === 'lean' ? 'Lean surplus' :
@@ -50,13 +45,18 @@ export default function HomeScreen() {
             <Text style={styles.eyebrow}>TODAY'S TARGETS</Text>
             <Text style={styles.title}>Let's grow.</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
-            <Text style={styles.settingsIcon}>⚙</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/history')} style={styles.settingsButton} activeOpacity={0.7}>
+              <Text style={styles.settingsIcon}>📅</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
+              <Text style={styles.settingsIcon}>⚙</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-       {/* === CHANGED === calorie card now shows remaining + progress */}
-       <View style={styles.calorieCard}>
+        {/* Calorie card */}
+        <View style={styles.calorieCard}>
           <Text style={styles.cardLabel}>CALORIES LEFT</Text>
           <View style={styles.valueRow}>
             <Text style={styles.cardValue}>{caloriesLeft}</Text>
@@ -68,7 +68,7 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtext}>{todayTotals.calories} of {targets.calories} eaten</Text>
         </View>
 
-        {/* === CHANGED === protein card now shows remaining + progress */}
+        {/* Protein card */}
         <View style={styles.proteinCard}>
           <Text style={styles.cardLabelDark}>PROTEIN LEFT</Text>
           <View style={styles.valueRow}>
@@ -88,7 +88,8 @@ export default function HomeScreen() {
           <BreakdownRow label="With activity (TDEE)" value={`${targets.tdee} kcal`} />
           <BreakdownRow label={surplusLabel} value={targets.surplus > 0 ? `+${targets.surplus} kcal` : 'no change'} isLast />
         </View>
-        {/* === NEW === today's log */}
+
+        {/* Today's log */}
         <Text style={styles.sectionTitle}>Today's log</Text>
         {todayEntries.length === 0 ? (
           <View style={styles.emptyLog}>
@@ -113,26 +114,26 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
+
         <Text style={styles.note}>
-        Day 13: yesterday view + 7-day history of your logs.
+          Day 14: workout programs — exercises, sets, reps, rest timer.
         </Text>
       </ScrollView>
-      {/* === NEW === sticky log-food CTA at the bottom of home */}
-      {/* === CHANGED === wrap both header actions in a row */}
-      <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/history')} style={styles.settingsButton} activeOpacity={0.7}>
-              <Text style={styles.settingsIcon}>📅</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
-              <Text style={styles.settingsIcon}>⚙</Text>
-            </TouchableOpacity>
-          </View>
+
+      {/* Sticky log-food button */}
+      <TouchableOpacity
+        style={styles.logButton}
+        onPress={() => router.push('/log-food')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.logButtonText}>+ Log food</Text>
+      </TouchableOpacity>
+
       <StatusBar style="light" />
     </View>
   );
 }
 
-// === NEW === small helper component — keeps the rendering clean
 function BreakdownRow({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
   return (
     <View style={[styles.row, !isLast && styles.rowBorder]}>
@@ -146,6 +147,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 80, paddingBottom: spacing.xl },
   scroll: { paddingBottom: spacing.xl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xl },
+  headerActions: { flexDirection: 'row', gap: spacing.sm },
   eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
   title: { ...typography.title, color: colors.textPrimary },
   settingsButton: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
@@ -159,6 +161,16 @@ const styles = StyleSheet.create({
   cardUnit: { ...typography.heading, color: colors.onAccent, opacity: 0.7, marginLeft: spacing.sm },
   cardSubtext: { ...typography.body, color: colors.onAccent, opacity: 0.7, marginTop: spacing.xs },
 
+  cardLabelDark: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
+  cardValueDark: { fontSize: 56, fontWeight: '800', color: colors.textPrimary, lineHeight: 60 },
+  cardUnitDark: { ...typography.heading, color: colors.textTertiary, marginLeft: spacing.sm },
+  cardSubtextDark: { ...typography.body, color: colors.textTertiary, marginTop: spacing.xs },
+
+  progressTrackLight: { height: 6, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
+  progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
+  progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
+  progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
+
   sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md },
   breakdownCard: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md },
@@ -166,19 +178,6 @@ const styles = StyleSheet.create({
   rowLabel: { ...typography.body, color: colors.textSecondary },
   rowValue: { ...typography.bodyBold, color: colors.textPrimary },
 
-  note: { ...typography.body, color: colors.textTertiary, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.md },cardLabelDark: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
-  cardValueDark: { fontSize: 56, fontWeight: '800', color: colors.textPrimary, lineHeight: 60 },
-  cardUnitDark: { ...typography.heading, color: colors.textTertiary, marginLeft: spacing.sm },
-  cardSubtextDark: { ...typography.body, color: colors.textTertiary, marginTop: spacing.xs },
-  // === NEW === sticky log-food button
-  logButton: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center', marginTop: spacing.md },
-  logButtonText: { ...typography.button, color: colors.onAccent },
-  // === NEW === progress bars (light variant for yellow card, dark for surface card)
-  progressTrackLight: { height: 6, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
-  progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
-  progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
-  progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
-  // === NEW === today's log section
   emptyLog: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.lg },
   emptyLogText: { ...typography.body, color: colors.textTertiary },
   logList: { gap: spacing.sm, marginBottom: spacing.lg },
@@ -188,6 +187,9 @@ const styles = StyleSheet.create({
   logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
   logDeleteButton: { padding: spacing.lg },
   logDeleteText: { color: colors.danger, fontSize: 18, fontWeight: 'bold' },
-  // === NEW === holds the two header buttons side by side
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
+
+  logButton: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center', marginTop: spacing.md },
+  logButtonText: { ...typography.button, color: colors.onAccent },
+
+  note: { ...typography.body, color: colors.textTertiary, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.md },
 });
