@@ -1,3 +1,5 @@
+// === NEW === pull in food log to compute today's totals
+import { useFoodLog, getTodayDateString } from '../context/foodLog';
 // === CHANGED === full rewrite — now the real dashboard, not a stub
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
@@ -11,20 +13,28 @@ import { calculateTargets } from '../lib/nutrition';
 export default function HomeScreen() {
   const router = useRouter();
   const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
-
+  // === NEW === pull today's totals from food log
+  const { getTotalsForDate, getEntriesForDate, deleteEntry } = useFoodLog();
+  const todayTotals = getTotalsForDate(getTodayDateString());
+  const todayEntries = getEntriesForDate(getTodayDateString());
   // === NEW === compute targets — memoized so it only recalculates when inputs change
   const targets = useMemo(() => {
     if (
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) {
-      return null;
+      return null; 
     }
     return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
   }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
 
   // === NEW === defensive — shouldn't happen because of auto-redirect, but TS likes it
   if (!targets) return null;
+   // === NEW === compute remaining and progress percentages
+   const caloriesLeft = Math.max(targets.calories - todayTotals.calories, 0);
+   const proteinLeft = Math.max(targets.protein - todayTotals.protein, 0);
+   const calorieProgress = Math.min(todayTotals.calories / targets.calories, 1);
+   const proteinProgress = Math.min(todayTotals.protein / targets.protein, 1);
 
   // === NEW === friendly label for surplus line
   const surplusLabel =
@@ -45,24 +55,30 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Calorie card — the hero */}
-        <View style={styles.calorieCard}>
-          <Text style={styles.cardLabel}>Calories</Text>
+       {/* === CHANGED === calorie card now shows remaining + progress */}
+       <View style={styles.calorieCard}>
+          <Text style={styles.cardLabel}>CALORIES LEFT</Text>
           <View style={styles.valueRow}>
-            <Text style={styles.cardValue}>{targets.calories}</Text>
+            <Text style={styles.cardValue}>{caloriesLeft}</Text>
             <Text style={styles.cardUnit}>kcal</Text>
           </View>
-          <Text style={styles.cardSubtext}>per day to hit your goal</Text>
+          <View style={styles.progressTrackLight}>
+            <View style={[styles.progressFillLight, { width: `${calorieProgress * 100}%` }]} />
+          </View>
+          <Text style={styles.cardSubtext}>{todayTotals.calories} of {targets.calories} eaten</Text>
         </View>
 
-        {/* Protein card */}
+        {/* === CHANGED === protein card now shows remaining + progress */}
         <View style={styles.proteinCard}>
-          <Text style={styles.cardLabelDark}>Protein</Text>
+          <Text style={styles.cardLabelDark}>PROTEIN LEFT</Text>
           <View style={styles.valueRow}>
-            <Text style={styles.cardValueDark}>{targets.protein}</Text>
+            <Text style={styles.cardValueDark}>{proteinLeft}</Text>
             <Text style={styles.cardUnitDark}>g</Text>
           </View>
-          <Text style={styles.cardSubtextDark}>1g per lb bodyweight</Text>
+          <View style={styles.progressTrackDark}>
+            <View style={[styles.progressFillDark, { width: `${proteinProgress * 100}%` }]} />
+          </View>
+          <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
         {/* Breakdown */}
@@ -131,4 +147,9 @@ const styles = StyleSheet.create({
   // === NEW === sticky log-food button
   logButton: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center', marginTop: spacing.md },
   logButtonText: { ...typography.button, color: colors.onAccent },
+  // === NEW === progress bars (light variant for yellow card, dark for surface card)
+  progressTrackLight: { height: 6, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
+  progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
+  progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
+  progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
 });
