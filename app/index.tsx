@@ -1,15 +1,32 @@
-// === NEW === welcome screen — first screen user sees (route: /)
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-// === CHANGED === path is now ../theme (we're inside app/)
+// === CHANGED === added ActivityIndicator
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+// === CHANGED === added Redirect
+import { useRouter, Redirect } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
-// === NEW === router for navigation
-import { useRouter } from 'expo-router';
+// === NEW === read context to decide what to render
+import { useOnboarding } from '../context/onboarding';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  // === NEW === pull state to check onboarding status
+  const { loaded, goal, weightLbs, activityLevel, targetWeightLbs } = useOnboarding();
 
-  // === CHANGED === now actually navigates
+  // === NEW === show spinner while AsyncStorage is loading
+  if (!loaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={colors.accent} size="large" />
+      </View>
+    );
+  }
+
+  // === NEW === if user already completed onboarding, send them to home
+  const isOnboarded = goal !== null && weightLbs !== null && activityLevel !== null && targetWeightLbs !== null;
+  if (isOnboarded) {
+    return <Redirect href="/home" />;
+  }
+
   const handleGetStarted = () => {
     router.push('/onboarding/goal');
   };
@@ -36,6 +53,8 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 100, paddingBottom: spacing.xl, justifyContent: 'space-between' },
+  // === NEW === full-screen loading state
+  loadingContainer: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
   content: { marginTop: spacing.xl },
   eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.lg },
   title: { ...typography.display, color: colors.textPrimary },
