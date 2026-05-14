@@ -118,13 +118,15 @@ export default function HomeScreen() {
         </Text>
       </ScrollView>
       {/* === NEW === sticky log-food CTA at the bottom of home */}
-      <TouchableOpacity
-          style={styles.logButton}
-          onPress={() => router.push('/log-food')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.logButtonText}>+ Log food</Text>
-        </TouchableOpacity>
+      {/* === CHANGED === wrap both header actions in a row */}
+      <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/history')} style={styles.settingsButton} activeOpacity={0.7}>
+              <Text style={styles.settingsIcon}>📅</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
+              <Text style={styles.settingsIcon}>⚙</Text>
+            </TouchableOpacity>
+          </View>
       <StatusBar style="light" />
     </View>
   );
@@ -186,4 +188,6 @@ const styles = StyleSheet.create({
   logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
   logDeleteButton: { padding: spacing.lg },
   logDeleteText: { color: colors.danger, fontSize: 18, fontWeight: 'bold' },
+  // === NEW === holds the two header buttons side by side
+  headerActions: { flexDirection: 'row', gap: spacing.sm },
 });
