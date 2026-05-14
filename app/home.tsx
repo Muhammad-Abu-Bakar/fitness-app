@@ -88,9 +88,33 @@ export default function HomeScreen() {
           <BreakdownRow label="With activity (TDEE)" value={`${targets.tdee} kcal`} />
           <BreakdownRow label={surplusLabel} value={targets.surplus > 0 ? `+${targets.surplus} kcal` : 'no change'} isLast />
         </View>
-
+        {/* === NEW === today's log */}
+        <Text style={styles.sectionTitle}>Today's log</Text>
+        {todayEntries.length === 0 ? (
+          <View style={styles.emptyLog}>
+            <Text style={styles.emptyLogText}>Nothing logged yet. Tap "+ Log food" to start.</Text>
+          </View>
+        ) : (
+          <View style={styles.logList}>
+            {todayEntries.map(entry => (
+              <View key={entry.id} style={styles.logItem}>
+                <View style={styles.logItemContent}>
+                  <Text style={styles.logItemName}>{entry.name}</Text>
+                  <Text style={styles.logItemMacros}>{entry.calories} kcal · {entry.protein}g protein</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => deleteEntry(entry.id)}
+                  style={styles.logDeleteButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.logDeleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
         <Text style={styles.note}>
-          Day 12: daily food logging — track meals against these targets.
+        Day 13: yesterday view + 7-day history of your logs.
         </Text>
       </ScrollView>
       {/* === NEW === sticky log-food CTA at the bottom of home */}
@@ -152,4 +176,14 @@ const styles = StyleSheet.create({
   progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
   progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
+  // === NEW === today's log section
+  emptyLog: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.lg },
+  emptyLogText: { ...typography.body, color: colors.textTertiary },
+  logList: { gap: spacing.sm, marginBottom: spacing.lg },
+  logItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingLeft: spacing.lg },
+  logItemContent: { flex: 1, paddingVertical: spacing.md },
+  logItemName: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: 2 },
+  logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
+  logDeleteButton: { padding: spacing.lg },
+  logDeleteText: { color: colors.danger, fontSize: 18, fontWeight: 'bold' },
 });
