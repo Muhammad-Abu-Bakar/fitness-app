@@ -77,6 +77,14 @@ export default function HomeScreen() {
           Day 12: daily food logging — track meals against these targets.
         </Text>
       </ScrollView>
+      {/* === NEW === sticky log-food CTA at the bottom of home */}
+      <TouchableOpacity
+          style={styles.logButton}
+          onPress={() => router.push('/log-food')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.logButtonText}>+ Log food</Text>
+        </TouchableOpacity>
       <StatusBar style="light" />
     </View>
   );
@@ -120,4 +128,7 @@ const styles = StyleSheet.create({
   cardValueDark: { fontSize: 56, fontWeight: '800', color: colors.textPrimary, lineHeight: 60 },
   cardUnitDark: { ...typography.heading, color: colors.textTertiary, marginLeft: spacing.sm },
   cardSubtextDark: { ...typography.body, color: colors.textTertiary, marginTop: spacing.xs },
+  // === NEW === sticky log-food button
+  logButton: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center', marginTop: spacing.md },
+  logButtonText: { ...typography.button, color: colors.onAccent },
 });
