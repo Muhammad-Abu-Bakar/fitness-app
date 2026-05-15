@@ -81,6 +81,22 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
+        {/* === NEW === Workouts entry card */}
+        <TouchableOpacity
+          style={styles.navCard}
+          onPress={() => router.push('/workouts')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.navCardIcon}>
+            <Text style={styles.navCardIconText}>💪</Text>
+          </View>
+          <View style={styles.navCardText}>
+            <Text style={styles.navCardLabel}>WORKOUTS</Text>
+            <Text style={styles.navCardTitle}>Browse programs</Text>
+          </View>
+          <Text style={styles.navCardArrow}>→</Text>
+        </TouchableOpacity>
+
         {/* Breakdown */}
         <Text style={styles.sectionTitle}>How we got there</Text>
         <View style={styles.breakdownCard}>
@@ -115,8 +131,9 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* === CHANGED === footer note updated for Day 15 */}
         <Text style={styles.note}>
-          Day 14: workout programs — exercises, sets, reps, rest timer.
+          Day 15: workout execution + rest timer.
         </Text>
       </ScrollView>
 
@@ -154,7 +171,7 @@ const styles = StyleSheet.create({
   settingsIcon: { fontSize: 22, color: colors.textPrimary },
 
   calorieCard: { backgroundColor: colors.accent, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
-  proteinCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.xl },
+  proteinCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
   cardLabel: { ...typography.caption, color: colors.onAccent, opacity: 0.7, marginBottom: spacing.sm },
   valueRow: { flexDirection: 'row', alignItems: 'baseline' },
   cardValue: { fontSize: 56, fontWeight: '800', color: colors.onAccent, lineHeight: 60 },
@@ -170,6 +187,30 @@ const styles = StyleSheet.create({
   progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
   progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
+
+  // === NEW === Workouts entry card styles
+  navCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    gap: spacing.md,
+  },
+  navCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navCardIconText: { fontSize: 24 },
+  navCardText: { flex: 1 },
+  navCardLabel: { ...typography.caption, color: colors.accent, marginBottom: 2 },
+  navCardTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  navCardArrow: { ...typography.heading, color: colors.textTertiary },
 
   sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md },
   breakdownCard: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
