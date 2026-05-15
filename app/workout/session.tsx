@@ -1,22 +1,18 @@
-// === NEW ===
-// app/workout/session.tsx
-//
-// The active workout session screen.
-// Shows one exercise at a time, with completed sets above and an input row below.
-// Logs each set into the activeSession via useWorkoutLog.
-
+// === CHANGED === adds rest timer + haptic on set log
 import { StatusBar } from 'expo-status-bar';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Alert, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { colors, spacing, radius, typography } from '../../theme';
 import { useWorkoutLog } from '../../context/workoutLog';
 import { getProgramById } from '../../lib/workouts/programs';
 import type { Exercise, LoggedSet } from '../../lib/workouts/types';
+import { RestTimer } from '../../components/RestTimer';
 
 export default function SessionScreen() {
   const router = useRouter();
@@ -36,7 +32,15 @@ export default function SessionScreen() {
     return day.exercises.length - 1;
   });
 
-  // No active session or invalid program/day — show empty state with a way out.
+  // === NEW === Rest timer state. restKey increments to force RestTimer to remount + restart.
+  const [restKey, setRestKey] = useState(0);
+  const [restActive, setRestActive] = useState(false);
+
+  // === NEW === Dismiss the timer when the user switches exercises (different rest period coming).
+  useEffect(() => {
+    setRestActive(false);
+  }, [currentExerciseIndex]);
+
   if (!activeSession || !program || !day) {
     return (
       <View style={styles.container}>
@@ -109,8 +113,6 @@ export default function SessionScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* key={currentExercise.id} forces remount when switching exercises,
-            so inputs reset to the new exercise's pre-fills. */}
         <ExerciseSection
           key={currentExercise.id}
           exercise={currentExercise}
@@ -118,9 +120,22 @@ export default function SessionScreen() {
           onLogSet={(weight, reps) => {
             const setNumber = getSetsForExercise(currentExercise.id).length + 1;
             logSet(currentExercise.id, setNumber, weight, reps);
+            // === NEW === light haptic + start fresh rest timer
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setRestKey(k => k + 1);
+            setRestActive(true);
           }}
         />
       </ScrollView>
+
+      {/* === NEW === Rest timer banner — sits between scroll and bottom nav */}
+      {restActive && (
+        <RestTimer
+          key={restKey}
+          totalSeconds={currentExercise.restSeconds}
+          onSkip={() => setRestActive(false)}
+        />
+      )}
 
       {/* Sticky bottom nav */}
       <View style={styles.bottomNav}>
@@ -173,7 +188,6 @@ function ExerciseSection({
   const isComplete = completedCount >= exercise.sets;
   const nextSetNumber = completedCount + 1;
 
-  // Smart pre-fills: previous set's values, or sensible defaults for set 1.
   const previousSet = loggedSets[loggedSets.length - 1];
   const initialWeight = previousSet ? previousSet.weightLbs.toString() : '';
   const initialReps = previousSet
@@ -212,7 +226,6 @@ function ExerciseSection({
       {exercise.notes && <Text style={styles.exerciseNotes}>{exercise.notes}</Text>}
 
       <View style={styles.setList}>
-        {/* Completed sets */}
         {loggedSets.map(set => (
           <View key={set.id} style={[styles.setRow, styles.setRowDone]}>
             <Text style={styles.setNumber}>SET {set.setNumber}</Text>
@@ -223,7 +236,6 @@ function ExerciseSection({
           </View>
         ))}
 
-        {/* Active input row */}
         {!isComplete && (
           <View style={[styles.setRow, styles.setRowActive]}>
             <Text style={styles.setNumber}>SET {nextSetNumber}</Text>
@@ -259,7 +271,6 @@ function ExerciseSection({
           </View>
         )}
 
-        {/* All sets done */}
         {isComplete && (
           <View style={styles.completeBox}>
             <Text style={styles.completeText}>✓ Exercise complete</Text>
@@ -277,8 +288,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingTop: 80,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,7 +313,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
 
-  // Exercise header
   exerciseName: {
     ...typography.heading,
     color: colors.textPrimary,
@@ -323,7 +331,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  // Set list
   setList: { marginTop: spacing.md },
   setRow: {
     flexDirection: 'row',
@@ -356,7 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Inputs
   inputs: {
     flex: 1,
     flexDirection: 'row',
@@ -391,7 +397,6 @@ const styles = StyleSheet.create({
     color: colors.onAccent,
   },
 
-  // Completion box
   completeBox: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -409,7 +414,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // Sticky bottom nav
   bottomNav: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -441,7 +445,6 @@ const styles = StyleSheet.create({
   navButtonTextDisabled: { color: colors.textTertiary },
   navButtonTextPrimaryDisabled: { color: colors.textTertiary },
 
-  // Empty state
   emptyContent: {
     flex: 1,
     justifyContent: 'center',
