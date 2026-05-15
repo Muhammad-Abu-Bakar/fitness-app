@@ -1,22 +1,18 @@
-// === NEW ===
-// app/workouts/[programId].tsx
-//
-// Program detail screen. Reads programId from the URL, looks up the program,
-// renders all days + exercises with sets/reps/rest and coaching notes.
-
+// === CHANGED === adds useWorkoutLog + Alert, plus Start/Resume buttons per day.
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { colors, spacing, radius, typography } from '../../theme';
 import { getProgramById } from '../../lib/workouts/programs';
 import type { WorkoutDay, Exercise } from '../../lib/workouts/types';
+import { useWorkoutLog } from '../../context/workoutLog';
 
 export default function ProgramDetailScreen() {
   const router = useRouter();
   const { programId } = useLocalSearchParams<{ programId: string }>();
   const program = programId ? getProgramById(programId) : undefined;
+  const { activeSession, startSession, cancelActiveSession } = useWorkoutLog();
 
-  // Handle bad URL / unknown id
   if (!program) {
     return (
       <View style={styles.container}>
@@ -46,6 +42,47 @@ export default function ProgramDetailScreen() {
     0
   );
 
+  // === NEW === Decide what happens when the user taps Start/Resume on a day.
+  function handleStartDay(dayId: string, dayName: string) {
+    if (!program) return; // appease TS — already guarded above
+
+    const goToSession = () => router.push('/workout/session');
+
+    // 1. No active session → start fresh and go
+    if (!activeSession) {
+      startSession(program.id, dayId);
+      goToSession();
+      return;
+    }
+
+    // 2. Active session is THIS day → just resume, keep all logged sets
+    if (
+      activeSession.programId === program.id &&
+      activeSession.dayId === dayId
+    ) {
+      goToSession();
+      return;
+    }
+
+    // 3. Active session is a DIFFERENT day → confirm before discarding
+    Alert.alert(
+      'Workout in progress',
+      `You're in the middle of another workout. Discard it and start ${dayName}?`,
+      [
+        { text: 'Keep current', style: 'cancel' },
+        {
+          text: 'Discard & start new',
+          style: 'destructive',
+          onPress: () => {
+            cancelActiveSession();
+            startSession(program.id, dayId);
+            goToSession();
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -65,7 +102,6 @@ export default function ProgramDetailScreen() {
 
         <Text style={styles.description}>{program.description}</Text>
 
-        {/* Meta row */}
         <View style={styles.metaRow}>
           <MetaItem value={program.daysPerWeek.toString()} label="days/week" />
           <View style={styles.metaDivider} />
@@ -74,15 +110,21 @@ export default function ProgramDetailScreen() {
           <MetaItem value={totalExercises.toString()} label="exercises" />
         </View>
 
-        {/* Days */}
         <Text style={styles.sectionTitle}>The split</Text>
         {program.days.map((day, idx) => (
-          <DayCard key={day.id} day={day} dayNumber={idx + 1} />
+          <DayCard
+            key={day.id}
+            day={day}
+            dayNumber={idx + 1}
+            // === NEW === active flag + start handler
+            isActive={
+              !!activeSession &&
+              activeSession.programId === program.id &&
+              activeSession.dayId === day.id
+            }
+            onStart={() => handleStartDay(day.id, day.name)}
+          />
         ))}
-
-        <Text style={styles.note}>
-          Workout execution with rest timer coming next.
-        </Text>
       </ScrollView>
 
       <StatusBar style="light" />
@@ -90,7 +132,17 @@ export default function ProgramDetailScreen() {
   );
 }
 
-function DayCard({ day, dayNumber }: { day: WorkoutDay; dayNumber: number }) {
+function DayCard({
+  day,
+  dayNumber,
+  isActive,
+  onStart,
+}: {
+  day: WorkoutDay;
+  dayNumber: number;
+  isActive: boolean;
+  onStart: () => void;
+}) {
   return (
     <View style={styles.dayCard}>
       <View style={styles.dayHeader}>
@@ -107,6 +159,19 @@ function DayCard({ day, dayNumber }: { day: WorkoutDay; dayNumber: number }) {
             isLast={idx === day.exercises.length - 1}
           />
         ))}
+      </View>
+
+      {/* === NEW === Start/Resume button at the bottom of every day card */}
+      <View style={styles.dayFooter}>
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={onStart}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.startButtonText}>
+            {isActive ? `Resume ${day.name}` : `Start ${day.name}`}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -150,7 +215,6 @@ const styles = StyleSheet.create({
   },
   scroll: { paddingBottom: spacing.xl },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -176,7 +240,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  // Meta row
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,33 +248,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginBottom: spacing.xl,
   },
-  metaItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  metaValue: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  metaLabel: {
-    ...typography.caption,
-    color: colors.textTertiary,
-  },
-  metaDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.surfaceElevated,
-  },
+  metaItem: { flex: 1, alignItems: 'center' },
+  metaValue: { ...typography.heading, color: colors.textPrimary, marginBottom: 2 },
+  metaLabel: { ...typography.caption, color: colors.textTertiary },
+  metaDivider: { width: 1, height: 28, backgroundColor: colors.surfaceElevated },
 
-  // Section
-  sectionTitle: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
+  sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md },
 
-  // Day card
   dayCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -223,42 +266,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceElevated,
   },
-  dayNumber: {
-    ...typography.caption,
-    color: colors.accent,
-    marginBottom: spacing.xs,
-  },
-  dayName: {
-    ...typography.heading,
-    color: colors.textPrimary,
-  },
-  daySubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
+  dayNumber: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
+  dayName: { ...typography.heading, color: colors.textPrimary },
+  daySubtitle: { ...typography.body, color: colors.textSecondary, marginTop: 2 },
 
-  // Exercise list
-  exerciseList: {
-    paddingHorizontal: spacing.lg,
-  },
-  exerciseRow: {
-    paddingVertical: spacing.md,
-  },
-  exerciseRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceElevated,
-  },
-  exerciseName: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  exerciseMeta: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
+  exerciseList: { paddingHorizontal: spacing.lg },
+  exerciseRow: { paddingVertical: spacing.md },
+  exerciseRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceElevated },
+  exerciseName: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: 2 },
+  exerciseMeta: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
   exerciseNotes: {
     ...typography.body,
     color: colors.textTertiary,
@@ -267,34 +283,32 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Not found state
+  // === NEW === Day footer + Start/Resume button
+  dayFooter: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  startButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  startButtonText: { ...typography.button, color: colors.onAccent },
+
   notFoundContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
   },
-  notFoundTitle: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
+  notFoundTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.lg },
   notFoundButton: {
     backgroundColor: colors.accent,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
   },
-  notFoundButtonText: {
-    ...typography.button,
-    color: colors.onAccent,
-  },
-
-  note: {
-    ...typography.body,
-    color: colors.textTertiary,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
+  notFoundButtonText: { ...typography.button, color: colors.onAccent },
 });
