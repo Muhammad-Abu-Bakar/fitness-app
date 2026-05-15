@@ -1,4 +1,4 @@
-// === CHANGED === adds rest timer + haptic on set log
+// === CHANGED === adds Finish workout flow on the last exercise
 import { StatusBar } from 'expo-status-bar';
 import { useState, useRef, useEffect } from 'react';
 import {
@@ -16,12 +16,17 @@ import { RestTimer } from '../../components/RestTimer';
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { activeSession, logSet, cancelActiveSession, getSetsForExercise } = useWorkoutLog();
+  const {
+    activeSession,
+    logSet,
+    cancelActiveSession,
+    finishSession, // === NEW ===
+    getSetsForExercise,
+  } = useWorkoutLog();
 
   const program = activeSession ? getProgramById(activeSession.programId) : undefined;
   const day = program?.days.find(d => d.id === activeSession?.dayId);
 
-  // Smart resume — start at the first exercise with incomplete sets.
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(() => {
     if (!activeSession || !day) return 0;
     for (let i = 0; i < day.exercises.length; i++) {
@@ -32,11 +37,9 @@ export default function SessionScreen() {
     return day.exercises.length - 1;
   });
 
-  // === NEW === Rest timer state. restKey increments to force RestTimer to remount + restart.
   const [restKey, setRestKey] = useState(0);
   const [restActive, setRestActive] = useState(false);
 
-  // === NEW === Dismiss the timer when the user switches exercises (different rest period coming).
   useEffect(() => {
     setRestActive(false);
   }, [currentExerciseIndex]);
@@ -90,12 +93,48 @@ export default function SessionScreen() {
     );
   }
 
+  // === NEW === Finish workout: save session, navigate to completion screen.
+  // === NEW === Finish workout: save session, navigate to completion screen.
+  function handleFinish() {
+    if (!activeSession || !day) return;
+    const id = activeSession.id;
+
+    const performFinish = () => {
+      finishSession();
+      router.replace({
+        pathname: '/workout/complete',
+        params: { sessionId: id },
+      });
+    };
+
+    // Count exercises where the user logged fewer sets than the program prescribes.
+    let incompleteCount = 0;
+    for (const ex of day.exercises) {
+      const logged = activeSession.sets.filter(s => s.exerciseId === ex.id).length;
+      if (logged < ex.sets) incompleteCount++;
+    }
+
+    if (incompleteCount > 0) {
+      const noun = incompleteCount === 1 ? 'exercise' : 'exercises';
+      Alert.alert(
+        'Workout not complete',
+        `${incompleteCount} ${noun} still have unfinished sets. Finish anyway?`,
+        [
+          { text: 'Keep going', style: 'cancel' },
+          { text: 'Finish anyway', style: 'destructive', onPress: performFinish },
+        ],
+      );
+      return;
+    }
+
+    performFinish();
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
           <Text style={styles.closeIcon}>✕</Text>
@@ -120,7 +159,6 @@ export default function SessionScreen() {
           onLogSet={(weight, reps) => {
             const setNumber = getSetsForExercise(currentExercise.id).length + 1;
             logSet(currentExercise.id, setNumber, weight, reps);
-            // === NEW === light haptic + start fresh rest timer
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setRestKey(k => k + 1);
             setRestActive(true);
@@ -128,7 +166,6 @@ export default function SessionScreen() {
         />
       </ScrollView>
 
-      {/* === NEW === Rest timer banner — sits between scroll and bottom nav */}
       {restActive && (
         <RestTimer
           key={restKey}
@@ -137,7 +174,6 @@ export default function SessionScreen() {
         />
       )}
 
-      {/* Sticky bottom nav */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           onPress={() => setCurrentExerciseIndex(i => Math.max(0, i - 1))}
@@ -150,24 +186,28 @@ export default function SessionScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => setCurrentExerciseIndex(i => Math.min(totalExercises - 1, i + 1))}
-          disabled={isLastExercise}
-          style={[
-            styles.navButton,
-            styles.navButtonPrimary,
-            isLastExercise && styles.navButtonPrimaryDisabled,
-          ]}
-          activeOpacity={0.7}
-        >
-          <Text style={[
-            styles.navButtonText,
-            styles.navButtonTextPrimary,
-            isLastExercise && styles.navButtonTextPrimaryDisabled,
-          ]}>
-            Next →
-          </Text>
-        </TouchableOpacity>
+        {/* === CHANGED === Next becomes Finish on the last exercise */}
+        {!isLastExercise ? (
+          <TouchableOpacity
+            onPress={() => setCurrentExerciseIndex(i => Math.min(totalExercises - 1, i + 1))}
+            style={[styles.navButton, styles.navButtonPrimary]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>
+              Next →
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={handleFinish}
+            style={[styles.navButton, styles.navButtonPrimary]}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>
+              Finish workout →
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <StatusBar style="light" />
@@ -274,7 +314,11 @@ function ExerciseSection({
         {isComplete && (
           <View style={styles.completeBox}>
             <Text style={styles.completeText}>✓ Exercise complete</Text>
-            <Text style={styles.completeSubtext}>Tap Next to move on</Text>
+            <Text style={styles.completeSubtext}>
+              {/* === CHANGED === friendlier message when on last exercise */}
+              Tap the button below to {/* hint will be obvious from the bottom nav */}
+              continue.
+            </Text>
           </View>
         )}
       </View>
@@ -412,6 +456,7 @@ const styles = StyleSheet.create({
   completeSubtext: {
     ...typography.body,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
 
   bottomNav: {
@@ -433,17 +478,12 @@ const styles = StyleSheet.create({
   },
   navButtonPrimary: { backgroundColor: colors.accent },
   navButtonDisabled: { opacity: 0.4 },
-  navButtonPrimaryDisabled: {
-    backgroundColor: colors.surface,
-    opacity: 0.4,
-  },
   navButtonText: {
     ...typography.button,
     color: colors.textPrimary,
   },
   navButtonTextPrimary: { color: colors.onAccent },
   navButtonTextDisabled: { color: colors.textTertiary },
-  navButtonTextPrimaryDisabled: { color: colors.textTertiary },
 
   emptyContent: {
     flex: 1,
