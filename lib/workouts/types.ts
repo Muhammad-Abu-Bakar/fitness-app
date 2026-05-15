@@ -53,3 +53,27 @@ export interface Program {
   goal: ProgramGoal;
   days: WorkoutDay[];
 }
+// === NEW === Logged workout data (separate from the program templates above).
+// Program/WorkoutDay/Exercise are TEMPLATES — what the program prescribes.
+// LoggedSet/WorkoutSession are RESULTS — what the user actually did.
+
+// A single set the user completed
+export interface LoggedSet {
+  id: string;
+  exerciseId: string;    // matches Exercise.id from the program template
+  setNumber: number;     // 1-indexed within an exercise
+  weightLbs: number;
+  reps: number;
+  timestamp: number;     // Date.now() when this set was logged
+}
+
+// A workout session — one attempt at one WorkoutDay
+export interface WorkoutSession {
+  id: string;
+  programId: string;     // matches Program.id
+  dayId: string;         // matches WorkoutDay.id
+  date: string;          // YYYY-MM-DD (date the session was started)
+  startedAt: number;     // Date.now() when started
+  completedAt: number | null;  // null while in progress
+  sets: LoggedSet[];
+}
