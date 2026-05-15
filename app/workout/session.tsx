@@ -1,4 +1,4 @@
-// === CHANGED === adds Finish workout flow on the last exercise
+// === CHANGED === fixes ScrollView under keyboard (scrollOuter style)
 import { StatusBar } from 'expo-status-bar';
 import { useState, useRef, useEffect } from 'react';
 import {
@@ -20,7 +20,7 @@ export default function SessionScreen() {
     activeSession,
     logSet,
     cancelActiveSession,
-    finishSession, // === NEW ===
+    finishSession,
     getSetsForExercise,
   } = useWorkoutLog();
 
@@ -93,8 +93,7 @@ export default function SessionScreen() {
     );
   }
 
-  // === NEW === Finish workout: save session, navigate to completion screen.
-  // === NEW === Finish workout: save session, navigate to completion screen.
+  // Finish workout: warn about any incomplete exercises, then save + navigate.
   function handleFinish() {
     if (!activeSession || !day) return;
     const id = activeSession.id;
@@ -107,7 +106,6 @@ export default function SessionScreen() {
       });
     };
 
-    // Count exercises where the user logged fewer sets than the program prescribes.
     let incompleteCount = 0;
     for (const ex of day.exercises) {
       const logged = activeSession.sets.filter(s => s.exerciseId === ex.id).length;
@@ -148,6 +146,7 @@ export default function SessionScreen() {
       </View>
 
       <ScrollView
+        style={styles.scrollOuter}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -186,7 +185,6 @@ export default function SessionScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* === CHANGED === Next becomes Finish on the last exercise */}
         {!isLastExercise ? (
           <TouchableOpacity
             onPress={() => setCurrentExerciseIndex(i => Math.min(totalExercises - 1, i + 1))}
@@ -315,9 +313,7 @@ function ExerciseSection({
           <View style={styles.completeBox}>
             <Text style={styles.completeText}>✓ Exercise complete</Text>
             <Text style={styles.completeSubtext}>
-              {/* === CHANGED === friendlier message when on last exercise */}
-              Tap the button below to {/* hint will be obvious from the bottom nav */}
-              continue.
+              Tap the button below to continue.
             </Text>
           </View>
         )}
@@ -352,6 +348,7 @@ const styles = StyleSheet.create({
   eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
   title: { ...typography.title, color: colors.textPrimary },
 
+  scrollOuter: { flex: 1 },
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
