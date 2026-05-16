@@ -8,6 +8,7 @@ import { useFoodLog } from '../../context/foodLog';
 import { useOnboarding } from '../../context/onboarding';
 import { calculateTargets } from '../../lib/nutrition';
 import { getPastNDates, formatDateLabel } from '../../lib/dates';
+import { tapLight, tapMedium } from '../../lib/haptics'; // === NEW === Day 18 polish
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -24,8 +25,14 @@ export default function HistoryScreen() {
 
   if (!targets) return null;
 
-  // === NEW === past 7 days
   const dates = getPastNDates(7);
+
+  // === NEW === Day 18 polish: detect all-empty week for a friendlier empty state
+  const totalEntriesAcrossWeek = dates.reduce(
+    (sum, date) => sum + getEntriesForDate(date).length,
+    0,
+  );
+  const hasAnyEntries = totalEntriesAcrossWeek > 0;
 
   return (
     <View style={styles.container}>
@@ -37,46 +44,70 @@ export default function HistoryScreen() {
         <Text style={styles.title}>History</Text>
         <Text style={styles.subtitle}>The past 7 days at a glance. Tap a day to see details.</Text>
 
-        <View style={styles.list}>
-          {dates.map(date => {
-            const totals = getTotalsForDate(date);
-            const entryCount = getEntriesForDate(date).length;
-            const hasData = entryCount > 0;
+        {!hasAnyEntries ? (
+          // === NEW === Day 18 polish: single empty state instead of 7 blank cards
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Nothing logged yet</Text>
+            <Text style={styles.emptyBody}>
+              Your meals and macros will show up here once you start logging.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyCta}
+              onPress={() => {
+                tapMedium();
+                router.push('/log-food');
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.emptyCtaText}>+ Log your first meal</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {dates.map(date => {
+              const totals = getTotalsForDate(date);
+              const entryCount = getEntriesForDate(date).length;
+              const hasData = entryCount > 0;
 
-            return (
-              <TouchableOpacity
-                key={date}
-                style={styles.dayCard}
-                onPress={() => router.push(`/history/${date}`)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.dayHeader}>
-                  <Text style={styles.dayLabel}>{formatDateLabel(date)}</Text>
-                  <Text style={styles.entryCount}>{hasData ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}` : 'No entries'}</Text>
-                </View>
-
-                {hasData && (
-                  <View style={styles.dayStats}>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statLabel}>Calories</Text>
-                      <Text style={styles.statValue}>
-                        {totals.calories}
-                        <Text style={styles.statTarget}> / {targets.calories}</Text>
-                      </Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statLabel}>Protein</Text>
-                      <Text style={styles.statValue}>
-                        {totals.protein}g
-                        <Text style={styles.statTarget}> / {targets.protein}g</Text>
-                      </Text>
-                    </View>
+              return (
+                // === CHANGED === Day 18 polish: light tap haptic on day cards
+                <TouchableOpacity
+                  key={date}
+                  style={styles.dayCard}
+                  onPress={() => {
+                    tapLight();
+                    router.push(`/history/${date}`);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.dayHeader}>
+                    <Text style={styles.dayLabel}>{formatDateLabel(date)}</Text>
+                    <Text style={styles.entryCount}>{hasData ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}` : 'No entries'}</Text>
                   </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+
+                  {hasData && (
+                    <View style={styles.dayStats}>
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Calories</Text>
+                        <Text style={styles.statValue}>
+                          {totals.calories}
+                          <Text style={styles.statTarget}> / {targets.calories}</Text>
+                        </Text>
+                      </View>
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Protein</Text>
+                        <Text style={styles.statValue}>
+                          {totals.protein}g
+                          <Text style={styles.statTarget}> / {targets.protein}g</Text>
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
       <StatusBar style="light" />
     </View>
@@ -100,4 +131,26 @@ const styles = StyleSheet.create({
   statLabel: { ...typography.body, color: colors.textSecondary },
   statValue: { ...typography.bodyBold, color: colors.textPrimary },
   statTarget: { color: colors.textTertiary, fontWeight: '400' },
+
+  // === NEW === Day 18 polish: empty state styles
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  emptyTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.sm },
+  emptyBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyCta: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  emptyCtaText: { ...typography.bodyBold, color: colors.onAccent },
 });

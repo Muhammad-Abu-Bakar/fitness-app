@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react'; // === CHANGED === Day 18: + useEffect
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useOnboarding } from '../context/onboarding';
 import { calculateTargets } from '../lib/nutrition';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
-import { tapMedium, warning } from '../lib/haptics'; // === NEW === Day 18 polish
+import { tapLight, tapMedium, warning } from '../lib/haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -26,6 +26,18 @@ export default function HomeScreen() {
     return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
   }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
 
+  // === NEW === Day 18 polish: defensive onboarding redirect guard.
+  // If onboarding data is missing after the AsyncStorage hydration window,
+  // assume the user landed here without completing onboarding and send them back.
+  // The 500ms delay prevents a false redirect during normal cold-launch hydration.
+  useEffect(() => {
+    if (targets !== null) return; // data is fine, no redirect needed
+    const timer = setTimeout(() => {
+      router.replace('/');
+    }, 500);
+    return () => clearTimeout(timer); // cancel if hydration completes
+  }, [targets, router]);
+
   if (!targets) return null;
 
   const caloriesLeft = Math.max(targets.calories - todayTotals.calories, 0);
@@ -38,10 +50,14 @@ export default function HomeScreen() {
     goal === 'lean' ? 'Lean surplus' :
     'Maintenance';
 
-  // === NEW === Day 18 polish: warning haptic on delete
   const handleDeleteEntry = (id: string) => {
     warning();
     deleteEntry(id);
+  };
+
+  const goTo = (path: string) => {
+    tapLight();
+    router.push(path);
   };
 
   return (
@@ -53,16 +69,15 @@ export default function HomeScreen() {
             <Text style={styles.title}>Let's grow.</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/history')} style={styles.settingsButton} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => goTo('/history')} style={styles.settingsButton} activeOpacity={0.7}>
               <Text style={styles.settingsIcon}>📅</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => goTo('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
               <Text style={styles.settingsIcon}>⚙</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Calorie card */}
         <View style={styles.calorieCard}>
           <Text style={styles.cardLabel}>CALORIES LEFT</Text>
           <View style={styles.valueRow}>
@@ -75,7 +90,6 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtext}>{todayTotals.calories} of {targets.calories} eaten</Text>
         </View>
 
-        {/* Protein card */}
         <View style={styles.proteinCard}>
           <Text style={styles.cardLabelDark}>PROTEIN LEFT</Text>
           <View style={styles.valueRow}>
@@ -88,16 +102,9 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
-        {/* Nav card group */}
         <View style={styles.navCardGroup}>
-          <TouchableOpacity
-            style={styles.navCard}
-            onPress={() => router.push('/workouts')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.navCardIcon}>
-              <Text style={styles.navCardIconText}>💪</Text>
-            </View>
+          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workouts')} activeOpacity={0.85}>
+            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>💪</Text></View>
             <View style={styles.navCardText}>
               <Text style={styles.navCardLabel}>WORKOUTS</Text>
               <Text style={styles.navCardTitle}>Browse programs</Text>
@@ -105,14 +112,8 @@ export default function HomeScreen() {
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navCard}
-            onPress={() => router.push('/workout/history')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.navCardIcon}>
-              <Text style={styles.navCardIconText}>📊</Text>
-            </View>
+          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workout/history')} activeOpacity={0.85}>
+            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>📊</Text></View>
             <View style={styles.navCardText}>
               <Text style={styles.navCardLabel}>HISTORY</Text>
               <Text style={styles.navCardTitle}>View past sessions</Text>
@@ -120,14 +121,8 @@ export default function HomeScreen() {
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navCard}
-            onPress={() => router.push('/check-in')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.navCardIcon}>
-              <Text style={styles.navCardIconText}>⚖️</Text>
-            </View>
+          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/check-in')} activeOpacity={0.85}>
+            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>⚖️</Text></View>
             <View style={styles.navCardText}>
               <Text style={styles.navCardLabel}>CHECK-IN</Text>
               <Text style={styles.navCardTitle}>Track your weight</Text>
@@ -136,7 +131,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Breakdown */}
         <Text style={styles.sectionTitle}>How we got there</Text>
         <View style={styles.breakdownCard}>
           <BreakdownRow label="Base metabolic rate" value={`${targets.bmr} kcal`} />
@@ -144,7 +138,6 @@ export default function HomeScreen() {
           <BreakdownRow label={surplusLabel} value={targets.surplus > 0 ? `+${targets.surplus} kcal` : 'no change'} isLast />
         </View>
 
-        {/* Today's log */}
         <Text style={styles.sectionTitle}>Today's log</Text>
         {todayEntries.length === 0 ? (
           <View style={styles.emptyLog}>
@@ -158,11 +151,7 @@ export default function HomeScreen() {
                   <Text style={styles.logItemName}>{entry.name}</Text>
                   <Text style={styles.logItemMacros}>{entry.calories} kcal · {entry.protein}g protein</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleDeleteEntry(entry.id)} 
-                  style={styles.logDeleteButton}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity onPress={() => handleDeleteEntry(entry.id)} style={styles.logDeleteButton} activeOpacity={0.7}>
                   <Text style={styles.logDeleteText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -170,12 +159,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <Text style={styles.note}>
-          Day 17: weekly check-in.
-        </Text>
+        <Text style={styles.note}>Day 17: weekly check-in.</Text>
       </ScrollView>
 
-      {/* === CHANGED === Day 18 polish: medium tap haptic on primary action */}
       <TouchableOpacity
         style={styles.logButton}
         onPress={() => {
@@ -230,22 +216,8 @@ const styles = StyleSheet.create({
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
 
   navCardGroup: { gap: spacing.md, marginBottom: spacing.xl },
-  navCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  navCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  navCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
+  navCardIcon: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
   navCardIconText: { fontSize: 24 },
   navCardText: { flex: 1 },
   navCardLabel: { ...typography.caption, color: colors.accent, marginBottom: 2 },
