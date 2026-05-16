@@ -6,6 +6,7 @@ import { colors, spacing, radius, typography } from '../theme';
 import { useOnboarding } from '../context/onboarding';
 import { calculateTargets } from '../lib/nutrition';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
+import { tapMedium, warning } from '../lib/haptics'; // === NEW === Day 18 polish
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -36,6 +37,12 @@ export default function HomeScreen() {
     goal === 'bulk' ? 'Bulk surplus' :
     goal === 'lean' ? 'Lean surplus' :
     'Maintenance';
+
+  // === NEW === Day 18 polish: warning haptic on delete
+  const handleDeleteEntry = (id: string) => {
+    warning();
+    deleteEntry(id);
+  };
 
   return (
     <View style={styles.container}>
@@ -81,9 +88,8 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
-        {/* Nav card group — three workout-progress entry points */}
+        {/* Nav card group */}
         <View style={styles.navCardGroup}>
-          {/* Workouts entry card */}
           <TouchableOpacity
             style={styles.navCard}
             onPress={() => router.push('/workouts')}
@@ -99,7 +105,6 @@ export default function HomeScreen() {
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
 
-          {/* Workout history entry card */}
           <TouchableOpacity
             style={styles.navCard}
             onPress={() => router.push('/workout/history')}
@@ -115,7 +120,6 @@ export default function HomeScreen() {
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
 
-          {/* === NEW === Check-in entry card (Day 17) */}
           <TouchableOpacity
             style={styles.navCard}
             onPress={() => router.push('/check-in')}
@@ -155,7 +159,7 @@ export default function HomeScreen() {
                   <Text style={styles.logItemMacros}>{entry.calories} kcal · {entry.protein}g protein</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => deleteEntry(entry.id)}
+                  onPress={() => handleDeleteEntry(entry.id)} 
                   style={styles.logDeleteButton}
                   activeOpacity={0.7}
                 >
@@ -166,16 +170,18 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* === CHANGED === footer note updated for Day 17 */}
         <Text style={styles.note}>
           Day 17: weekly check-in.
         </Text>
       </ScrollView>
 
-      {/* Sticky log-food button */}
+      {/* === CHANGED === Day 18 polish: medium tap haptic on primary action */}
       <TouchableOpacity
         style={styles.logButton}
-        onPress={() => router.push('/log-food')}
+        onPress={() => {
+          tapMedium();
+          router.push('/log-food');
+        }}
         activeOpacity={0.85}
       >
         <Text style={styles.logButtonText}>+ Log food</Text>
@@ -224,7 +230,6 @@ const styles = StyleSheet.create({
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
 
   navCardGroup: { gap: spacing.md, marginBottom: spacing.xl },
-
   navCard: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -13,6 +13,7 @@ import {
 } from '../lib/checkIns/stats';
 import { formatDateLabel } from '../lib/dates';
 import type { CheckIn } from '../lib/checkIns/types';
+import { tapMedium, warning } from '../lib/haptics'; // === NEW === Day 18 polish
 
 export default function CheckInScreen() {
   const router = useRouter();
@@ -32,7 +33,14 @@ export default function CheckInScreen() {
       `${formatDateLabel(entry.date)} · ${entry.weightLbs.toFixed(1)} lbs`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteCheckIn(entry.id) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            warning(); // === NEW === Day 18 polish: warning haptic on confirmed delete
+            deleteCheckIn(entry.id);
+          },
+        },
       ],
     );
   };
@@ -98,9 +106,13 @@ export default function CheckInScreen() {
         )}
       </ScrollView>
 
+      {/* === CHANGED === Day 18 polish: medium tap haptic on primary action */}
       <TouchableOpacity
         style={styles.logButton}
-        onPress={() => router.push('/log-checkin')}
+        onPress={() => {
+          tapMedium();
+          router.push('/log-checkin');
+        }}
         activeOpacity={0.85}
       >
         <Text style={styles.logButtonText}>+ Log check-in</Text>
