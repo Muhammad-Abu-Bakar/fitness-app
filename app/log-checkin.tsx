@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useCheckIn } from '../context/checkIn';
+import { success } from '../lib/haptics'; // === NEW === Day 18 polish
 
 function getTodayDateString(): string {
   const d = new Date();
@@ -34,6 +35,7 @@ export default function LogCheckInScreen() {
     if (!isValid) return;
     const rounded = Math.round(weightN * 10) / 10;
     addCheckIn(getTodayDateString(), rounded, notes);
+    success(); // === NEW === Day 18 polish: tactile confirmation
     router.back();
   };
 

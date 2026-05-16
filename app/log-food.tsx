@@ -5,6 +5,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Keyboa
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
+import { success } from '../lib/haptics'; // === NEW === Day 18 polish
 
 export default function LogFoodScreen() {
   const router = useRouter();
@@ -17,7 +18,6 @@ export default function LogFoodScreen() {
   const caloriesN = parseFloat(calories);
   const proteinN = parseFloat(protein);
 
-  // === NEW === validation: name non-empty, sane macro ranges
   const isValid =
     name.trim().length > 0 &&
     !isNaN(caloriesN) && caloriesN >= 0 && caloriesN <= 5000 &&
@@ -31,6 +31,7 @@ export default function LogFoodScreen() {
       protein: Math.round(proteinN),
       date: getTodayDateString(),
     });
+    success(); // === NEW === Day 18 polish: tactile confirmation
     router.back();
   };
 
