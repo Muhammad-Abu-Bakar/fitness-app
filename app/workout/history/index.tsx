@@ -14,16 +14,14 @@ import {
 } from '../../../lib/workouts/sessionStats';
 import { formatDateLabel } from '../../../lib/dates';
 import type { WorkoutSession } from '../../../lib/workouts/types';
+import { tapLight, tapMedium } from '../../../lib/haptics'; // === NEW === Day 18 polish
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
   const { sessions, isLoaded } = useWorkoutLog();
 
-  // Wait for AsyncStorage hydration so we don't flash the empty state on launch
   if (!isLoaded) return null;
 
-  // Only show finished sessions. Defensive filter — context already separates
-  // active vs completed, but this keeps the screen safe if anything changes.
   const completed = sessions.filter((s) => s.completedAt !== null);
 
   return (
@@ -44,9 +42,13 @@ export default function WorkoutHistoryScreen() {
             <Text style={styles.emptyBody}>
               Finish a workout and it'll show up here with stats.
             </Text>
+            {/* === CHANGED === Day 18 polish: medium tap on empty state CTA */}
             <TouchableOpacity
               style={styles.emptyCta}
-              onPress={() => router.push('/workouts')}
+              onPress={() => {
+                tapMedium();
+                router.push('/workouts');
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.emptyCtaText}>Browse programs</Text>
@@ -55,10 +57,14 @@ export default function WorkoutHistoryScreen() {
         ) : (
           <View style={styles.list}>
             {completed.map((session) => (
+              // === CHANGED === Day 18 polish: light tap on session cards
               <SessionCard
                 key={session.id}
                 session={session}
-                onPress={() => router.push(`/workout/history/${session.id}`)}
+                onPress={() => {
+                  tapLight();
+                  router.push(`/workout/history/${session.id}`);
+                }}
               />
             ))}
           </View>
@@ -75,8 +81,6 @@ interface SessionCardProps {
 }
 
 function SessionCard({ session, onPress }: SessionCardProps) {
-  // Look up the program + day to show their friendly names.
-  // Fallbacks cover the case where a program was renamed/removed after this session was saved.
   const program = getProgramById(session.programId);
   const day = program?.days.find((d) => d.id === session.dayId);
   const programName = program?.name ?? 'Workout';
@@ -132,7 +136,6 @@ const styles = StyleSheet.create({
   title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
 
-  // Card list
   list: { gap: spacing.md },
   dayCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
   dayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -144,7 +147,6 @@ const styles = StyleSheet.create({
   statLabel: { ...typography.body, color: colors.textSecondary },
   statValue: { ...typography.bodyBold, color: colors.textPrimary },
 
-  // Empty state
   emptyCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
