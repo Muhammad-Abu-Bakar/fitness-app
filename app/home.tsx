@@ -81,21 +81,40 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
-        {/* === NEW === Workouts entry card */}
-        <TouchableOpacity
-          style={styles.navCard}
-          onPress={() => router.push('/workouts')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.navCardIcon}>
-            <Text style={styles.navCardIconText}>💪</Text>
-          </View>
-          <View style={styles.navCardText}>
-            <Text style={styles.navCardLabel}>WORKOUTS</Text>
-            <Text style={styles.navCardTitle}>Browse programs</Text>
-          </View>
-          <Text style={styles.navCardArrow}>→</Text>
-        </TouchableOpacity>
+        {/* === CHANGED === wrap the two workout nav cards together (Day 16) */}
+        <View style={styles.navCardGroup}>
+          {/* Workouts entry card */}
+          <TouchableOpacity
+            style={styles.navCard}
+            onPress={() => router.push('/workouts')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.navCardIcon}>
+              <Text style={styles.navCardIconText}>💪</Text>
+            </View>
+            <View style={styles.navCardText}>
+              <Text style={styles.navCardLabel}>WORKOUTS</Text>
+              <Text style={styles.navCardTitle}>Browse programs</Text>
+            </View>
+            <Text style={styles.navCardArrow}>→</Text>
+          </TouchableOpacity>
+
+          {/* === NEW === Workout history entry card (Day 16) */}
+          <TouchableOpacity
+            style={styles.navCard}
+            onPress={() => router.push('/workout/history')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.navCardIcon}>
+              <Text style={styles.navCardIconText}>📊</Text>
+            </View>
+            <View style={styles.navCardText}>
+              <Text style={styles.navCardLabel}>HISTORY</Text>
+              <Text style={styles.navCardTitle}>View past sessions</Text>
+            </View>
+            <Text style={styles.navCardArrow}>→</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Breakdown */}
         <Text style={styles.sectionTitle}>How we got there</Text>
@@ -131,9 +150,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* === CHANGED === footer note updated for Day 15 */}
+        {/* === CHANGED === footer note updated for Day 16 */}
         <Text style={styles.note}>
-          Day 15: workout execution + rest timer.
+          Day 16: workout history.
         </Text>
       </ScrollView>
 
@@ -188,14 +207,16 @@ const styles = StyleSheet.create({
   progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
 
-  // === NEW === Workouts entry card styles
+  // === NEW === wrapper for the two workout nav cards (Day 16)
+  navCardGroup: { gap: spacing.md, marginBottom: spacing.xl },
+
+  // === CHANGED === removed marginBottom (handled by navCardGroup now)
   navCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.xl,
     gap: spacing.md,
   },
   navCardIcon: {
