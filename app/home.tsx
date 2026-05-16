@@ -81,7 +81,7 @@ export default function HomeScreen() {
           <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
         </View>
 
-        {/* === CHANGED === wrap the two workout nav cards together (Day 16) */}
+        {/* Nav card group — three workout-progress entry points */}
         <View style={styles.navCardGroup}>
           {/* Workouts entry card */}
           <TouchableOpacity
@@ -99,7 +99,7 @@ export default function HomeScreen() {
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
 
-          {/* === NEW === Workout history entry card (Day 16) */}
+          {/* Workout history entry card */}
           <TouchableOpacity
             style={styles.navCard}
             onPress={() => router.push('/workout/history')}
@@ -111,6 +111,22 @@ export default function HomeScreen() {
             <View style={styles.navCardText}>
               <Text style={styles.navCardLabel}>HISTORY</Text>
               <Text style={styles.navCardTitle}>View past sessions</Text>
+            </View>
+            <Text style={styles.navCardArrow}>→</Text>
+          </TouchableOpacity>
+
+          {/* === NEW === Check-in entry card (Day 17) */}
+          <TouchableOpacity
+            style={styles.navCard}
+            onPress={() => router.push('/check-in')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.navCardIcon}>
+              <Text style={styles.navCardIconText}>⚖️</Text>
+            </View>
+            <View style={styles.navCardText}>
+              <Text style={styles.navCardLabel}>CHECK-IN</Text>
+              <Text style={styles.navCardTitle}>Track your weight</Text>
             </View>
             <Text style={styles.navCardArrow}>→</Text>
           </TouchableOpacity>
@@ -150,9 +166,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* === CHANGED === footer note updated for Day 16 */}
+        {/* === CHANGED === footer note updated for Day 17 */}
         <Text style={styles.note}>
-          Day 16: workout history.
+          Day 17: weekly check-in.
         </Text>
       </ScrollView>
 
@@ -207,10 +223,8 @@ const styles = StyleSheet.create({
   progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
   progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
 
-  // === NEW === wrapper for the two workout nav cards (Day 16)
   navCardGroup: { gap: spacing.md, marginBottom: spacing.xl },
 
-  // === CHANGED === removed marginBottom (handled by navCardGroup now)
   navCard: {
     flexDirection: 'row',
     alignItems: 'center',
