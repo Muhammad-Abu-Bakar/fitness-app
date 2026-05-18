@@ -1,12 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo } from 'react'; // === CHANGED === Day 18: + useEffect
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+// === CHANGED === pulling new semantic tokens; legacy `accent` no longer referenced here
 import { colors, spacing, radius, typography } from '../theme';
 import { useOnboarding } from '../context/onboarding';
 import { calculateTargets } from '../lib/nutrition';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
 import { tapLight, tapMedium, warning } from '../lib/haptics';
+// === NEW === hero component for the redesign
+import { HomeHero } from '../components/HomeHero';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -26,24 +29,19 @@ export default function HomeScreen() {
     return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
   }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
 
-  // === NEW === Day 18 polish: defensive onboarding redirect guard.
-  // If onboarding data is missing after the AsyncStorage hydration window,
-  // assume the user landed here without completing onboarding and send them back.
-  // The 500ms delay prevents a false redirect during normal cold-launch hydration.
+  // Onboarding redirect guard (unchanged from Day 18).
   useEffect(() => {
-    if (targets !== null) return; // data is fine, no redirect needed
+    if (targets !== null) return;
     const timer = setTimeout(() => {
       router.replace('/');
     }, 500);
-    return () => clearTimeout(timer); // cancel if hydration completes
+    return () => clearTimeout(timer);
   }, [targets, router]);
 
   if (!targets) return null;
 
   const caloriesLeft = Math.max(targets.calories - todayTotals.calories, 0);
   const proteinLeft = Math.max(targets.protein - todayTotals.protein, 0);
-  const calorieProgress = Math.min(todayTotals.calories / targets.calories, 1);
-  const proteinProgress = Math.min(todayTotals.protein / targets.protein, 1);
 
   const surplusLabel =
     goal === 'bulk' ? 'Bulk surplus' :
@@ -62,51 +60,53 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      {/* === NEW === floating icon row at top-right (was inside header before) */}
+      <View style={styles.iconRow}>
+        <TouchableOpacity onPress={() => goTo('/history')} style={styles.iconButton} activeOpacity={0.7}>
+          <Text style={styles.iconEmoji}>📅</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => goTo('/settings')} style={styles.iconButton} activeOpacity={0.7}>
+          <Text style={styles.iconEmoji}>⚙</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>TODAY'S TARGETS</Text>
-            <Text style={styles.title}>Let's grow.</Text>
+        {/* === NEW === Home hero (aurora + ring + headline) */}
+        <HomeHero
+          caloriesEaten={todayTotals.calories}
+          caloriesTarget={targets.calories}
+          mealsLogged={todayEntries.length}
+          goal={goal as string}
+        />
+
+        {/* === CHANGED === stats row replaces the old yellow calorie + dark protein cards.
+            Both cyan = food domain. */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>CALORIES LEFT</Text>
+            <View style={styles.statValueRow}>
+              <Text style={styles.statValue}>{caloriesLeft}</Text>
+              <Text style={styles.statUnit}>kcal</Text>
+            </View>
+            <Text style={styles.statSub}>{todayTotals.calories} of {targets.calories} eaten</Text>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => goTo('/history')} style={styles.settingsButton} activeOpacity={0.7}>
-              <Text style={styles.settingsIcon}>📅</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => goTo('/settings')} style={styles.settingsButton} activeOpacity={0.7}>
-              <Text style={styles.settingsIcon}>⚙</Text>
-            </TouchableOpacity>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>PROTEIN LEFT</Text>
+            <View style={styles.statValueRow}>
+              <Text style={styles.statValue}>{proteinLeft}</Text>
+              <Text style={styles.statUnit}>g</Text>
+            </View>
+            <Text style={styles.statSub}>{todayTotals.protein} of {targets.protein}g eaten</Text>
           </View>
         </View>
 
-        <View style={styles.calorieCard}>
-          <Text style={styles.cardLabel}>CALORIES LEFT</Text>
-          <View style={styles.valueRow}>
-            <Text style={styles.cardValue}>{caloriesLeft}</Text>
-            <Text style={styles.cardUnit}>kcal</Text>
-          </View>
-          <View style={styles.progressTrackLight}>
-            <View style={[styles.progressFillLight, { width: `${calorieProgress * 100}%` }]} />
-          </View>
-          <Text style={styles.cardSubtext}>{todayTotals.calories} of {targets.calories} eaten</Text>
-        </View>
-
-        <View style={styles.proteinCard}>
-          <Text style={styles.cardLabelDark}>PROTEIN LEFT</Text>
-          <View style={styles.valueRow}>
-            <Text style={styles.cardValueDark}>{proteinLeft}</Text>
-            <Text style={styles.cardUnitDark}>g</Text>
-          </View>
-          <View style={styles.progressTrackDark}>
-            <View style={[styles.progressFillDark, { width: `${proteinProgress * 100}%` }]} />
-          </View>
-          <Text style={styles.cardSubtextDark}>{todayTotals.protein} of {targets.protein}g eaten</Text>
-        </View>
-
+        {/* === CHANGED === nav cards reskinned. Workouts + History = lime (training).
+            Check-in = cyan (body/nutrition outcome). These come out in step 5 when tabs replace them. */}
         <View style={styles.navCardGroup}>
           <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workouts')} activeOpacity={0.85}>
             <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>💪</Text></View>
             <View style={styles.navCardText}>
-              <Text style={styles.navCardLabel}>WORKOUTS</Text>
+              <Text style={styles.navCardLabelTrain}>WORKOUTS</Text>
               <Text style={styles.navCardTitle}>Browse programs</Text>
             </View>
             <Text style={styles.navCardArrow}>→</Text>
@@ -115,7 +115,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workout/history')} activeOpacity={0.85}>
             <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>📊</Text></View>
             <View style={styles.navCardText}>
-              <Text style={styles.navCardLabel}>HISTORY</Text>
+              <Text style={styles.navCardLabelTrain}>HISTORY</Text>
               <Text style={styles.navCardTitle}>View past sessions</Text>
             </View>
             <Text style={styles.navCardArrow}>→</Text>
@@ -124,7 +124,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.navCard} onPress={() => goTo('/check-in')} activeOpacity={0.85}>
             <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>⚖️</Text></View>
             <View style={styles.navCardText}>
-              <Text style={styles.navCardLabel}>CHECK-IN</Text>
+              <Text style={styles.navCardLabelFood}>CHECK-IN</Text>
               <Text style={styles.navCardTitle}>Track your weight</Text>
             </View>
             <Text style={styles.navCardArrow}>→</Text>
@@ -158,10 +158,9 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-
-        <Text style={styles.note}>Day 17: weekly check-in.</Text>
       </ScrollView>
 
+      {/* === CHANGED === floating CTA — cyan outline (food domain) */}
       <TouchableOpacity
         style={styles.logButton}
         onPress={() => {
@@ -170,7 +169,7 @@ export default function HomeScreen() {
         }}
         activeOpacity={0.85}
       >
-        <Text style={styles.logButtonText}>+ Log food</Text>
+        <Text style={styles.logButtonText}>+ LOG FOOD</Text>
       </TouchableOpacity>
 
       <StatusBar style="light" />
@@ -188,61 +187,136 @@ function BreakdownRow({ label, value, isLast }: { label: string; value: string; 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 80, paddingBottom: spacing.xl },
-  scroll: { paddingBottom: spacing.xl },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xl },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
-  eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
-  title: { ...typography.title, color: colors.textPrimary },
-  settingsButton: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  settingsIcon: { fontSize: 22, color: colors.textPrimary },
+  // === CHANGED === flat dark bg, no transparent. PaddingTop removed (hero handles top).
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundSolid,
+    paddingHorizontal: spacing.lg,
+  },
+  // === CHANGED === scroll padding makes room for the absolute icon row up top and the floating CTA at bottom
+  scroll: {
+    paddingTop: 110,
+    paddingBottom: 110,
+  },
 
-  calorieCard: { backgroundColor: colors.accent, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
-  proteinCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
-  cardLabel: { ...typography.caption, color: colors.onAccent, opacity: 0.7, marginBottom: spacing.sm },
-  valueRow: { flexDirection: 'row', alignItems: 'baseline' },
-  cardValue: { fontSize: 56, fontWeight: '800', color: colors.onAccent, lineHeight: 60 },
-  cardUnit: { ...typography.heading, color: colors.onAccent, opacity: 0.7, marginLeft: spacing.sm },
-  cardSubtext: { ...typography.body, color: colors.onAccent, opacity: 0.7, marginTop: spacing.xs },
+  // === NEW === floating icon row top-right
+  iconRow: {
+    position: 'absolute',
+    top: 60,
+    right: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    zIndex: 10,
+  },
+  iconButton: {
+    width: 40, height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  iconEmoji: { fontSize: 18 },
 
-  cardLabelDark: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
-  cardValueDark: { fontSize: 56, fontWeight: '800', color: colors.textPrimary, lineHeight: 60 },
-  cardUnitDark: { ...typography.heading, color: colors.textTertiary, marginLeft: spacing.sm },
-  cardSubtextDark: { ...typography.body, color: colors.textTertiary, marginTop: spacing.xs },
+  // === NEW === stats row (replaces old yellow calorie + dark protein cards)
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.smd,
+    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.18)', // cyan tint = food domain
+  },
+  statLabel: { ...typography.caption, color: colors.accentFood, marginBottom: spacing.xs },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline' },
+  statValue: { fontSize: 32, fontWeight: '900', color: colors.textPrimary, lineHeight: 36 },
+  statUnit: { fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginLeft: 4 },
+  statSub: { fontSize: 11, color: colors.textTertiary, marginTop: spacing.xs },
 
-  progressTrackLight: { height: 6, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
-  progressFillLight: { height: '100%', backgroundColor: colors.onAccent, borderRadius: 3 },
-  progressTrackDark: { height: 6, backgroundColor: colors.surfaceElevated, borderRadius: 3, marginVertical: spacing.sm, overflow: 'hidden' },
-  progressFillDark: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
-
-  navCardGroup: { gap: spacing.md, marginBottom: spacing.xl },
-  navCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
-  navCardIcon: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
-  navCardIconText: { fontSize: 24 },
+  // === CHANGED === nav cards reskinned. Different label colors per domain.
+  navCardGroup: { gap: spacing.smd, marginBottom: spacing.lg },
+  navCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  navCardIcon: {
+    width: 40, height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  navCardIconText: { fontSize: 20 },
   navCardText: { flex: 1 },
-  navCardLabel: { ...typography.caption, color: colors.accent, marginBottom: 2 },
+  navCardLabelTrain: { ...typography.caption, color: colors.accentTrain, marginBottom: 2 },
+  navCardLabelFood: { ...typography.caption, color: colors.accentFood, marginBottom: 2 },
   navCardTitle: { ...typography.bodyBold, color: colors.textPrimary },
-  navCardArrow: { ...typography.heading, color: colors.textTertiary },
+  navCardArrow: { fontSize: 18, color: colors.textTertiary },
 
-  sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md },
-  breakdownCard: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
+  // === CHANGED === section titles + sub-content blocks use the new subtle border token
+  sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md, marginTop: spacing.sm },
+  breakdownCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceElevated },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
   rowLabel: { ...typography.body, color: colors.textSecondary },
   rowValue: { ...typography.bodyBold, color: colors.textPrimary },
 
-  emptyLog: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.lg },
-  emptyLogText: { ...typography.body, color: colors.textTertiary },
+  emptyLog: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  emptyLogText: { ...typography.body, color: colors.textTertiary, textAlign: 'center' },
   logList: { gap: spacing.sm, marginBottom: spacing.lg },
-  logItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingLeft: spacing.lg },
-  logItemContent: { flex: 1, paddingVertical: spacing.md },
+  logItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingLeft: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  logItemContent: { flex: 1, paddingVertical: spacing.smd },
   logItemName: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: 2 },
-  logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
-  logDeleteButton: { padding: spacing.lg },
-  logDeleteText: { color: colors.danger, fontSize: 18, fontWeight: 'bold' },
+  logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 13 },
+  logDeleteButton: { padding: spacing.md },
+  logDeleteText: { color: colors.danger, fontSize: 16, fontWeight: '700' },
 
-  logButton: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center', marginTop: spacing.md },
-  logButtonText: { ...typography.button, color: colors.onAccent },
-
-  note: { ...typography.body, color: colors.textTertiary, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.md },
+  // === CHANGED === floating CTA — cyan outlined button instead of yellow filled
+  logButton: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    paddingVertical: 16,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    backgroundColor: 'rgba(34,211,238,0.10)',
+    borderWidth: 1.5,
+    borderColor: colors.accentFood,
+  },
+  logButtonText: { ...typography.button, color: colors.textPrimary },
 });
