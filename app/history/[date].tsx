@@ -8,10 +8,10 @@ import { useFoodLog } from '../../context/foodLog';
 import { useOnboarding } from '../../context/onboarding';
 import { calculateTargets } from '../../lib/nutrition';
 import { formatDateFull } from '../../lib/dates';
+import { warning } from '../../lib/haptics'; // === NEW === Day 18 polish
 
 export default function DayDetailScreen() {
   const router = useRouter();
-  // === NEW === read the dynamic [date] param from the URL
   const { date } = useLocalSearchParams<{ date: string }>();
   const { getEntriesForDate, getTotalsForDate, deleteEntry } = useFoodLog();
   const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
@@ -28,6 +28,12 @@ export default function DayDetailScreen() {
 
   const entries = getEntriesForDate(date);
   const totals = getTotalsForDate(date);
+
+  // === NEW === Day 18 polish: warning haptic on delete (same pattern as home)
+  const handleDeleteEntry = (id: string) => {
+    warning();
+    deleteEntry(id);
+  };
 
   return (
     <View style={styles.container}>
@@ -65,7 +71,8 @@ export default function DayDetailScreen() {
                   <Text style={styles.entryName}>{entry.name}</Text>
                   <Text style={styles.entryMacros}>{entry.calories} kcal · {entry.protein}g protein</Text>
                 </View>
-                <TouchableOpacity onPress={() => deleteEntry(entry.id)} style={styles.deleteButton} activeOpacity={0.7}>
+                {/* === CHANGED === Day 18 polish: haptic-wrapped delete */}
+                <TouchableOpacity onPress={() => handleDeleteEntry(entry.id)} style={styles.deleteButton} activeOpacity={0.7}>
                   <Text style={styles.deleteText}>✕</Text>
                 </TouchableOpacity>
               </View>

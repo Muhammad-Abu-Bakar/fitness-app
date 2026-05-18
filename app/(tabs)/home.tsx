@@ -2,14 +2,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-// === CHANGED === added LinearGradient back, this time for the bottom CTA fade.
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, radius, typography } from '../theme';
-import { useOnboarding } from '../context/onboarding';
-import { calculateTargets } from '../lib/nutrition';
-import { useFoodLog, getTodayDateString } from '../context/foodLog';
-import { tapLight, tapMedium, warning } from '../lib/haptics';
-import { HomeHero } from '../components/HomeHero';
+import { colors, spacing, radius, typography } from '../../theme';
+import { useOnboarding } from '../../context/onboarding';
+import { calculateTargets } from '../../lib/nutrition';
+import { useFoodLog, getTodayDateString } from '../../context/foodLog';
+import { tapLight, warning } from '../../lib/haptics';
+import { HomeHero } from '../../components/HomeHero';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -59,15 +57,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconRow}>
-        <TouchableOpacity onPress={() => goTo('/history')} style={styles.iconButton} activeOpacity={0.7}>
-          <Text style={styles.iconEmoji}>📅</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => goTo('/settings')} style={styles.iconButton} activeOpacity={0.7}>
-          <Text style={styles.iconEmoji}>⚙</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <HomeHero
           caloriesEaten={todayTotals.calories}
@@ -95,34 +84,15 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.navCardGroup}>
-          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workouts')} activeOpacity={0.85}>
-            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>💪</Text></View>
-            <View style={styles.navCardText}>
-              <Text style={styles.navCardLabelTrain}>WORKOUTS</Text>
-              <Text style={styles.navCardTitle}>Browse programs</Text>
-            </View>
-            <Text style={styles.navCardArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workout/history')} activeOpacity={0.85}>
-            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>📊</Text></View>
-            <View style={styles.navCardText}>
-              <Text style={styles.navCardLabelTrain}>HISTORY</Text>
-              <Text style={styles.navCardTitle}>View past sessions</Text>
-            </View>
-            <Text style={styles.navCardArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navCard} onPress={() => goTo('/check-in')} activeOpacity={0.85}>
-            <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>⚖️</Text></View>
-            <View style={styles.navCardText}>
-              <Text style={styles.navCardLabelFood}>CHECK-IN</Text>
-              <Text style={styles.navCardTitle}>Track your weight</Text>
-            </View>
-            <Text style={styles.navCardArrow}>→</Text>
-          </TouchableOpacity>
-        </View>
+        {/* === CHANGED === only Check-in card remains; Workouts + History moved to tab bar */}
+        <TouchableOpacity style={styles.navCard} onPress={() => goTo('/check-in')} activeOpacity={0.85}>
+          <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>⚖️</Text></View>
+          <View style={styles.navCardText}>
+            <Text style={styles.navCardLabelFood}>CHECK-IN</Text>
+            <Text style={styles.navCardTitle}>Track your weight</Text>
+          </View>
+          <Text style={styles.navCardArrow}>→</Text>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>How we got there</Text>
         <View style={styles.breakdownCard}>
@@ -134,7 +104,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Today's log</Text>
         {todayEntries.length === 0 ? (
           <View style={styles.emptyLog}>
-            <Text style={styles.emptyLogText}>Nothing logged yet. Tap "+ Log food" to start.</Text>
+            <Text style={styles.emptyLogText}>Nothing logged yet. Tap "+" in the tab bar to start.</Text>
           </View>
         ) : (
           <View style={styles.logList}>
@@ -152,27 +122,6 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* === NEW === bottom fade — sits between ScrollView and the floating CTA so
-          scrolling content fades to bg color before reaching the button area.
-          pointerEvents="none" lets taps fall through to the scroll. */}
-      <LinearGradient
-        colors={['rgba(10,15,18,0)', colors.backgroundSolid]}
-        locations={[0, 0.7]}
-        style={styles.bottomFade}
-        pointerEvents="none"
-      />
-
-      <TouchableOpacity
-        style={styles.logButton}
-        onPress={() => {
-          tapMedium();
-          router.push('/log-food');
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.logButtonText}>+ LOG FOOD</Text>
-      </TouchableOpacity>
 
       <StatusBar style="light" />
     </View>
@@ -194,27 +143,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSolid,
     paddingHorizontal: spacing.lg,
   },
-  scroll: {
-    paddingTop: 110,
-    paddingBottom: 110,
-  },
-  iconRow: {
-    position: 'absolute',
-    top: 60,
-    right: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    zIndex: 10,
-  },
-  iconButton: {
-    width: 40, height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  iconEmoji: { fontSize: 18 },
+  // === CHANGED === paddingTop 60 (no floating icons), paddingBottom 100 (tab bar clearance)
+  scroll: { paddingTop: 60, paddingBottom: 100 },
 
   statsRow: {
     flexDirection: 'row',
@@ -236,7 +166,7 @@ const styles = StyleSheet.create({
   statUnit: { fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginLeft: 4 },
   statSub: { fontSize: 11, color: colors.textTertiary, marginTop: spacing.xs },
 
-  navCardGroup: { gap: spacing.smd, marginBottom: spacing.lg },
+  // === CHANGED === single nav card (was a group of 3)
   navCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -246,6 +176,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
+    marginBottom: spacing.lg,
   },
   navCardIcon: {
     width: 40, height: 40,
@@ -255,7 +186,6 @@ const styles = StyleSheet.create({
   },
   navCardIconText: { fontSize: 20 },
   navCardText: { flex: 1 },
-  navCardLabelTrain: { ...typography.caption, color: colors.accentTrain, marginBottom: 2 },
   navCardLabelFood: { ...typography.caption, color: colors.accentFood, marginBottom: 2 },
   navCardTitle: { ...typography.bodyBold, color: colors.textPrimary },
   navCardArrow: { fontSize: 18, color: colors.textTertiary },
@@ -299,26 +229,4 @@ const styles = StyleSheet.create({
   logItemMacros: { ...typography.body, color: colors.textSecondary, fontSize: 13 },
   logDeleteButton: { padding: spacing.md },
   logDeleteText: { color: colors.danger, fontSize: 16, fontWeight: '700' },
-
-  // === NEW === fade strip behind the floating CTA — masks scroll content as it
-  // approaches the button area so nothing bleeds through.
-  bottomFade: {
-    position: 'absolute',
-    left: 0, right: 0, bottom: 0,
-    height: 120,
-  },
-
-  logButton: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.lg,
-    paddingVertical: 16,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    backgroundColor: 'rgba(34,211,238,0.10)',
-    borderWidth: 1.5,
-    borderColor: colors.accentFood,
-  },
-  logButtonText: { ...typography.button, color: colors.textPrimary },
 });
