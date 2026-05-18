@@ -1,8 +1,7 @@
 // === NEW === Bulkify redesign step 3: home screen hero.
 // Aurora glow (two radial gradients, cyan-left + lime-right), dual-tone progress
 // ring showing daily calorie target %, goal-aware headline, and a floating
-// "meals logged" pill on the food-domain (cyan) side. Will be reused on the
-// workout-complete screen and milestone toasts later.
+// "meals logged" pill on the food-domain (cyan) side.
 
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Defs, RadialGradient, LinearGradient, Stop, Circle, Rect } from 'react-native-svg';
@@ -12,7 +11,6 @@ interface HomeHeroProps {
   caloriesEaten: number;
   caloriesTarget: number;
   mealsLogged: number;
-  // Loose string type so any future goal value still renders (falls back to neutral copy).
   goal: string;
 }
 
@@ -25,7 +23,6 @@ export function HomeHero({ caloriesEaten, caloriesTarget, mealsLogged, goal }: H
   const progress = Math.min(caloriesEaten / Math.max(caloriesTarget, 1), 1);
   const percent = Math.round(progress * 100);
 
-  // Goal-aware headline. Add new goals here as they're introduced.
   const headline =
     goal === 'bulk' ? ['YOUR DAY IS', 'BULKING UP.'] :
     goal === 'lean' ? ['YOUR DAY IS', 'LEANING UP.'] :
@@ -33,8 +30,6 @@ export function HomeHero({ caloriesEaten, caloriesTarget, mealsLogged, goal }: H
 
   return (
     <View style={styles.hero}>
-      {/* Aurora glow — two radial gradients layered (cyan-left, lime-right).
-          pointerEvents="none" so taps pass through to anything below. */}
       <View style={styles.auroraBox} pointerEvents="none">
         <Svg width="100%" height="100%" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
           <Defs>
@@ -67,12 +62,20 @@ export function HomeHero({ caloriesEaten, caloriesTarget, mealsLogged, goal }: H
               <Stop offset="1" stopColor="#A3E635" />
             </LinearGradient>
           </Defs>
-          {/* Base track */}
+          {/* === CHANGED === Inner dark stage — masks the aurora inside the ring so the
+              % and DAILY TARGET text sit on a clean dark background like Image 2. */}
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS - RING_STROKE / 2}
+            fill={colors.backgroundSolid}
+          />
+          {/* === CHANGED === Base ring track — bumped from 0.08 to 0.18 opacity
+              for better visibility now that aurora is masked from inside. */}
           <Circle
             cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
-            stroke="rgba(255,255,255,0.08)" strokeWidth={RING_STROKE} fill="none"
+            stroke="rgba(255,255,255,0.18)" strokeWidth={RING_STROKE} fill="none"
           />
-          {/* Progress arc — only rendered when progress > 0 so we don't get a stray dot at 12 o'clock */}
           {progress > 0 && (
             <Circle
               cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
@@ -106,7 +109,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.xl,
     paddingBottom: spacing.lg,
-    marginHorizontal: -spacing.lg, // break out of screen padding for full-bleed aurora
+    marginHorizontal: -spacing.lg,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -134,9 +137,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
     position: 'relative',
   },
+  // === CHANGED === added top/left/right/bottom: 0 so the absolute View fills the
+  // ring's bounding box and alignItems/justifyContent actually centers the text.
   ringCenter: {
     position: 'absolute',
-    alignItems: 'center', justifyContent: 'center',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ringPercent: {
     fontSize: 44,
@@ -145,9 +152,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     lineHeight: 48,
   },
+  // === CHANGED === bumped from textTertiary to textSecondary for a readable label.
   ringLabel: {
     ...typography.caption,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   pillTopLeft: {

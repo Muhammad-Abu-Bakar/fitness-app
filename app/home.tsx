@@ -2,13 +2,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-// === CHANGED === pulling new semantic tokens; legacy `accent` no longer referenced here
+// === CHANGED === added LinearGradient back, this time for the bottom CTA fade.
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography } from '../theme';
 import { useOnboarding } from '../context/onboarding';
 import { calculateTargets } from '../lib/nutrition';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
 import { tapLight, tapMedium, warning } from '../lib/haptics';
-// === NEW === hero component for the redesign
 import { HomeHero } from '../components/HomeHero';
 
 export default function HomeScreen() {
@@ -29,7 +29,6 @@ export default function HomeScreen() {
     return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
   }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
 
-  // Onboarding redirect guard (unchanged from Day 18).
   useEffect(() => {
     if (targets !== null) return;
     const timer = setTimeout(() => {
@@ -60,7 +59,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* === NEW === floating icon row at top-right (was inside header before) */}
       <View style={styles.iconRow}>
         <TouchableOpacity onPress={() => goTo('/history')} style={styles.iconButton} activeOpacity={0.7}>
           <Text style={styles.iconEmoji}>📅</Text>
@@ -71,7 +69,6 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* === NEW === Home hero (aurora + ring + headline) */}
         <HomeHero
           caloriesEaten={todayTotals.calories}
           caloriesTarget={targets.calories}
@@ -79,8 +76,6 @@ export default function HomeScreen() {
           goal={goal as string}
         />
 
-        {/* === CHANGED === stats row replaces the old yellow calorie + dark protein cards.
-            Both cyan = food domain. */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>CALORIES LEFT</Text>
@@ -100,8 +95,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* === CHANGED === nav cards reskinned. Workouts + History = lime (training).
-            Check-in = cyan (body/nutrition outcome). These come out in step 5 when tabs replace them. */}
         <View style={styles.navCardGroup}>
           <TouchableOpacity style={styles.navCard} onPress={() => goTo('/workouts')} activeOpacity={0.85}>
             <View style={styles.navCardIcon}><Text style={styles.navCardIconText}>💪</Text></View>
@@ -160,7 +153,16 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* === CHANGED === floating CTA — cyan outline (food domain) */}
+      {/* === NEW === bottom fade — sits between ScrollView and the floating CTA so
+          scrolling content fades to bg color before reaching the button area.
+          pointerEvents="none" lets taps fall through to the scroll. */}
+      <LinearGradient
+        colors={['rgba(10,15,18,0)', colors.backgroundSolid]}
+        locations={[0, 0.7]}
+        style={styles.bottomFade}
+        pointerEvents="none"
+      />
+
       <TouchableOpacity
         style={styles.logButton}
         onPress={() => {
@@ -187,19 +189,15 @@ function BreakdownRow({ label, value, isLast }: { label: string; value: string; 
 }
 
 const styles = StyleSheet.create({
-  // === CHANGED === flat dark bg, no transparent. PaddingTop removed (hero handles top).
   container: {
     flex: 1,
     backgroundColor: colors.backgroundSolid,
     paddingHorizontal: spacing.lg,
   },
-  // === CHANGED === scroll padding makes room for the absolute icon row up top and the floating CTA at bottom
   scroll: {
     paddingTop: 110,
     paddingBottom: 110,
   },
-
-  // === NEW === floating icon row top-right
   iconRow: {
     position: 'absolute',
     top: 60,
@@ -218,7 +216,6 @@ const styles = StyleSheet.create({
   },
   iconEmoji: { fontSize: 18 },
 
-  // === NEW === stats row (replaces old yellow calorie + dark protein cards)
   statsRow: {
     flexDirection: 'row',
     gap: spacing.smd,
@@ -231,7 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.18)', // cyan tint = food domain
+    borderColor: 'rgba(34,211,238,0.18)',
   },
   statLabel: { ...typography.caption, color: colors.accentFood, marginBottom: spacing.xs },
   statValueRow: { flexDirection: 'row', alignItems: 'baseline' },
@@ -239,7 +236,6 @@ const styles = StyleSheet.create({
   statUnit: { fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginLeft: 4 },
   statSub: { fontSize: 11, color: colors.textTertiary, marginTop: spacing.xs },
 
-  // === CHANGED === nav cards reskinned. Different label colors per domain.
   navCardGroup: { gap: spacing.smd, marginBottom: spacing.lg },
   navCard: {
     flexDirection: 'row',
@@ -264,7 +260,6 @@ const styles = StyleSheet.create({
   navCardTitle: { ...typography.bodyBold, color: colors.textPrimary },
   navCardArrow: { fontSize: 18, color: colors.textTertiary },
 
-  // === CHANGED === section titles + sub-content blocks use the new subtle border token
   sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md, marginTop: spacing.sm },
   breakdownCard: {
     backgroundColor: colors.surface,
@@ -305,7 +300,14 @@ const styles = StyleSheet.create({
   logDeleteButton: { padding: spacing.md },
   logDeleteText: { color: colors.danger, fontSize: 16, fontWeight: '700' },
 
-  // === CHANGED === floating CTA — cyan outlined button instead of yellow filled
+  // === NEW === fade strip behind the floating CTA — masks scroll content as it
+  // approaches the button area so nothing bleeds through.
+  bottomFade: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    height: 120,
+  },
+
   logButton: {
     position: 'absolute',
     left: spacing.lg,
