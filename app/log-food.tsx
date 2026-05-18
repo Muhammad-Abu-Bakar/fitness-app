@@ -1,11 +1,15 @@
-// === NEW === log food screen — minimal form: name + calories + protein
+// Log food screen — minimal form: name + calories + protein.
+// Food domain throughout (cyan). Pushed from the QuickAdd sheet ("+" tab)
+// or anywhere on home that points to /log-food.
+
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
-import { success } from '../lib/haptics'; // === NEW === Day 18 polish
+// === CHANGED === added tapLight for the cancel button; success was already here
+import { tapLight, success } from '../lib/haptics';
 
 export default function LogFoodScreen() {
   const router = useRouter();
@@ -23,6 +27,12 @@ export default function LogFoodScreen() {
     !isNaN(caloriesN) && caloriesN >= 0 && caloriesN <= 5000 &&
     !isNaN(proteinN) && proteinN >= 0 && proteinN <= 500;
 
+  // === NEW === cancel button gets a light haptic, consistent with rest of app
+  const handleCancel = () => {
+    tapLight();
+    router.back();
+  };
+
   const handleSave = () => {
     if (!isValid) return;
     addEntry({
@@ -31,17 +41,19 @@ export default function LogFoodScreen() {
       protein: Math.round(proteinN),
       date: getTodayDateString(),
     });
-    success(); // === NEW === Day 18 polish: tactile confirmation
+    success();
     router.back();
   };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backButton} onPress={handleCancel} activeOpacity={0.7}>
           <Text style={styles.backText}>← Cancel</Text>
         </TouchableOpacity>
 
+        {/* === NEW === eyebrow marks the screen as food domain */}
+        <Text style={styles.eyebrow}>FOOD</Text>
         <Text style={styles.title}>Log food</Text>
         <Text style={styles.subtitle}>Anything you ate or drank — meal, snack, shake.</Text>
 
@@ -108,20 +120,50 @@ export default function LogFoodScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 60, paddingBottom: spacing.xl },
+  // === CHANGED === explicit dark bg (was transparent — relied on the deleted global gradient)
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundSolid,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 60,
+    paddingBottom: spacing.xl,
+  },
   scroll: { paddingBottom: spacing.lg },
   backButton: { alignSelf: 'flex-start', paddingVertical: spacing.sm, marginBottom: spacing.md },
-  backText: { ...typography.bodyBold, color: colors.accent },
+  // === CHANGED === cancel link is cyan now (was yellow accent)
+  backText: { ...typography.bodyBold, color: colors.accentFood },
+
+  // === NEW === cyan eyebrow above title — food domain marker
+  eyebrow: { ...typography.caption, color: colors.accentFood, marginBottom: spacing.xs },
+
   title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
+
   field: { marginBottom: spacing.lg },
   fieldRow: { flexDirection: 'row', gap: spacing.md },
   halfField: { flex: 1 },
   label: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: spacing.sm },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md },
+
+  // === CHANGED === input rows get a subtle cyan border (food domain marker)
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.18)',
+  },
   input: { flex: 1, ...typography.body, color: colors.textPrimary, paddingVertical: 14, fontSize: 18 },
   unit: { ...typography.body, color: colors.textTertiary, marginLeft: spacing.sm },
-  button: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center' },
+
+  // === CHANGED === save button is solid cyan with dark text (was yellow)
+  button: {
+    backgroundColor: colors.accentFood,
+    paddingVertical: 18,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+  },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { ...typography.button, color: colors.onAccent },
+  buttonText: { ...typography.button, color: colors.onAccentFood },
 });
