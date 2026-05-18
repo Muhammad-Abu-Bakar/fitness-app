@@ -1,14 +1,16 @@
-// Same lime corner-glow program list as step 4, but with the back button
-// removed (tabs don't have back) and bottom padding adjusted for the tab bar.
+// Lime corner-glow program list (no back button — it's a tab root).
+// Was previously app/(tabs)/workouts.tsx; moved here so the tab can host
+// nested routes (the [programId] detail) without losing the tab bar.
 
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, radius, typography } from '../../theme';
-import { getAllPrograms } from '../../lib/workouts/programs';
-import type { Program } from '../../lib/workouts/types';
-import { tapLight } from '../../lib/haptics';
+// === CHANGED === imports one level deeper now: ../../ -> ../../../
+import { colors, spacing, radius, typography } from '../../../theme';
+import { getAllPrograms } from '../../../lib/workouts/programs';
+import type { Program } from '../../../lib/workouts/types';
+import { tapLight } from '../../../lib/haptics';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
@@ -97,7 +99,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSolid,
     paddingHorizontal: spacing.lg,
   },
-  // === CHANGED === paddingTop 80 (status bar room), paddingBottom 100 (tab bar)
   scroll: { paddingTop: 80, paddingBottom: 100 },
 
   header: { marginBottom: spacing.xl },

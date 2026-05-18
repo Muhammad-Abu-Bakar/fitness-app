@@ -1,11 +1,19 @@
-// === CHANGED === adds useWorkoutLog + Alert, plus Start/Resume buttons per day.
+// === CHANGED === Moved from app/workouts/[programId].tsx into the (tabs) group
+// so the tab bar stays visible while viewing a program's detail.
+// Token migration: legacy `accent` (yellow) -> `accentTrain` (lime), legacy
+// `onAccent` -> `onAccentTrain`, `background` -> `backgroundSolid`,
+// `surfaceElevated`-as-divider -> `borderSubtle`/`borderDefault`. Behavior unchanged.
+
 import { StatusBar } from 'expo-status-bar';
 import { Alert, StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { colors, spacing, radius, typography } from '../../theme';
-import { getProgramById } from '../../lib/workouts/programs';
-import type { WorkoutDay, Exercise } from '../../lib/workouts/types';
-import { useWorkoutLog } from '../../context/workoutLog';
+// === CHANGED === imports one level deeper: ../../ -> ../../../
+import { colors, spacing, radius, typography } from '../../../theme';
+import { getProgramById } from '../../../lib/workouts/programs';
+import type { WorkoutDay, Exercise } from '../../../lib/workouts/types';
+import { useWorkoutLog } from '../../../context/workoutLog';
+// === NEW === haptics on the back + start/resume buttons (consistent with rest of app)
+import { tapLight, tapMedium } from '../../../lib/haptics';
 
 export default function ProgramDetailScreen() {
   const router = useRouter();
@@ -13,16 +21,17 @@ export default function ProgramDetailScreen() {
   const program = programId ? getProgramById(programId) : undefined;
   const { activeSession, startSession, cancelActiveSession } = useWorkoutLog();
 
+  const handleBack = () => {
+    tapLight();
+    router.back();
+  };
+
   if (!program) {
     return (
       <View style={styles.container}>
         <View style={styles.notFoundContent}>
           <Text style={styles.notFoundTitle}>Program not found</Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.notFoundButton}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.notFoundButton} activeOpacity={0.85}>
             <Text style={styles.notFoundButtonText}>← Back to programs</Text>
           </TouchableOpacity>
         </View>
@@ -42,20 +51,20 @@ export default function ProgramDetailScreen() {
     0
   );
 
-  // === NEW === Decide what happens when the user taps Start/Resume on a day.
   function handleStartDay(dayId: string, dayName: string) {
-    if (!program) return; // appease TS — already guarded above
+    if (!program) return;
 
-    const goToSession = () => router.push('/workout/session');
+    const goToSession = () => {
+      tapMedium();
+      router.push('/workout/session');
+    };
 
-    // 1. No active session → start fresh and go
     if (!activeSession) {
       startSession(program.id, dayId);
       goToSession();
       return;
     }
 
-    // 2. Active session is THIS day → just resume, keep all logged sets
     if (
       activeSession.programId === program.id &&
       activeSession.dayId === dayId
@@ -64,7 +73,6 @@ export default function ProgramDetailScreen() {
       return;
     }
 
-    // 3. Active session is a DIFFERENT day → confirm before discarding
     Alert.alert(
       'Workout in progress',
       `You're in the middle of another workout. Discard it and start ${dayName}?`,
@@ -87,11 +95,7 @@ export default function ProgramDetailScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <View style={styles.headerText}>
@@ -116,7 +120,6 @@ export default function ProgramDetailScreen() {
             key={day.id}
             day={day}
             dayNumber={idx + 1}
-            // === NEW === active flag + start handler
             isActive={
               !!activeSession &&
               activeSession.programId === program.id &&
@@ -161,13 +164,8 @@ function DayCard({
         ))}
       </View>
 
-      {/* === NEW === Start/Resume button at the bottom of every day card */}
       <View style={styles.dayFooter}>
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={onStart}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.startButton} onPress={onStart} activeOpacity={0.85}>
           <Text style={styles.startButtonText}>
             {isActive ? `Resume ${day.name}` : `Start ${day.name}`}
           </Text>
@@ -206,12 +204,13 @@ function MetaItem({ value, label }: { value: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
+  // === CHANGED === backgroundSolid + tab-bar-safe bottom padding
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSolid,
     paddingHorizontal: spacing.lg,
     paddingTop: 80,
-    paddingBottom: spacing.xl,
+    paddingBottom: 100,
   },
   scroll: { paddingBottom: spacing.xl },
 
@@ -221,17 +220,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.md,
   },
+  // === CHANGED === slimmer back button with subtle border, matches home + list patterns
   backButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
-  backIcon: { fontSize: 22, color: colors.textPrimary },
+  backIcon: { fontSize: 18, color: colors.textPrimary },
   headerText: { flex: 1 },
-  eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
+  // === CHANGED === lime eyebrow (training domain) instead of yellow
+  eyebrow: { ...typography.caption, color: colors.accentTrain, marginBottom: spacing.xs },
   title: { ...typography.title, color: colors.textPrimary },
 
   description: {
@@ -247,11 +250,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   metaItem: { flex: 1, alignItems: 'center' },
   metaValue: { ...typography.heading, color: colors.textPrimary, marginBottom: 2 },
   metaLabel: { ...typography.caption, color: colors.textTertiary },
-  metaDivider: { width: 1, height: 28, backgroundColor: colors.surfaceElevated },
+  // === CHANGED === divider uses borderDefault for visibility on dark surface
+  metaDivider: { width: 1, height: 28, backgroundColor: colors.borderDefault },
 
   sectionTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.md },
 
@@ -260,19 +266,24 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   dayHeader: {
     padding: spacing.lg,
+    // === CHANGED === softer divider color (was surfaceElevated which now barely shows)
     borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceElevated,
+    borderBottomColor: colors.borderSubtle,
   },
-  dayNumber: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
+  // === CHANGED === lime day number (training domain) instead of yellow
+  dayNumber: { ...typography.caption, color: colors.accentTrain, marginBottom: spacing.xs },
   dayName: { ...typography.heading, color: colors.textPrimary },
   daySubtitle: { ...typography.body, color: colors.textSecondary, marginTop: 2 },
 
   exerciseList: { paddingHorizontal: spacing.lg },
   exerciseRow: { paddingVertical: spacing.md },
-  exerciseRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceElevated },
+  // === CHANGED === softer divider color
+  exerciseRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
   exerciseName: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: 2 },
   exerciseMeta: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
   exerciseNotes: {
@@ -283,19 +294,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // === NEW === Day footer + Start/Resume button
   dayFooter: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
   },
+  // === CHANGED === lime start/resume button (training domain) instead of yellow
   startButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentTrain,
     paddingVertical: 14,
     borderRadius: radius.md,
     alignItems: 'center',
   },
-  startButtonText: { ...typography.button, color: colors.onAccent },
+  startButtonText: { ...typography.button, color: colors.onAccentTrain },
 
   notFoundContent: {
     flex: 1,
@@ -304,11 +315,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   notFoundTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.lg },
+  // === CHANGED === lime tokens
   notFoundButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentTrain,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
   },
-  notFoundButtonText: { ...typography.button, color: colors.onAccent },
+  notFoundButtonText: { ...typography.button, color: colors.onAccentTrain },
 });
