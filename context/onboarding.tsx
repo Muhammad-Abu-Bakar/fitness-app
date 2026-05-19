@@ -1,12 +1,11 @@
-// === CHANGED === full rewrite — adds persistence, loaded flag, and reset
+// === CHANGED === added sex field (used by Profile avatar)
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-// === NEW === storage import
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type Goal = 'bulk' | 'lean' | 'exploring';
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active';
+export type Sex = 'male' | 'female'; // === NEW ===
 
-// === NEW === one storage key, easy to find
 const STORAGE_KEY = '@fitness_app:onboarding';
 
 type OnboardingState = {
@@ -17,18 +16,18 @@ type OnboardingState = {
   age: number | null;
   activityLevel: ActivityLevel | null;
   targetWeightLbs: number | null;
+  sex: Sex | null; // === NEW ===
 };
 
 type StatsInput = { weightLbs: number; heightFt: number; heightIn: number; age: number };
 
 type OnboardingContextValue = OnboardingState & {
-  // === NEW === lets UI wait for storage load before rendering
   loaded: boolean;
   setGoal: (g: Goal) => void;
   setStats: (s: StatsInput) => void;
   setActivityLevel: (a: ActivityLevel) => void;
   setTargetWeight: (w: number) => void;
-  // === NEW === wipes everything (used by settings → reset profile)
+  setSex: (s: Sex) => void; // === NEW ===
   reset: () => void;
 };
 
@@ -40,22 +39,22 @@ const initialState: OnboardingState = {
   age: null,
   activityLevel: null,
   targetWeightLbs: null,
+  sex: null, // === NEW ===
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<OnboardingState>(initialState);
-  // === NEW === tracks whether initial AsyncStorage read is finished
   const [loaded, setLoaded] = useState(false);
 
-  // === NEW === load saved state on mount
   useEffect(() => {
     const load = async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored !== null) {
-          setState(JSON.parse(stored));
+          // === CHANGED === merge with initialState so old saves without `sex` get null default
+          setState({ ...initialState, ...JSON.parse(stored) });
         }
       } catch (e) {
         console.error('Failed to load onboarding state:', e);
@@ -66,7 +65,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     load();
   }, []);
 
-  // === NEW === save state whenever it changes (but not before initial load completes)
   useEffect(() => {
     if (!loaded) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(e =>
@@ -82,6 +80,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       setState(s => ({ ...s, weightLbs, heightFt, heightIn, age })),
     setActivityLevel: (activityLevel) => setState(s => ({ ...s, activityLevel })),
     setTargetWeight: (targetWeightLbs) => setState(s => ({ ...s, targetWeightLbs })),
+    setSex: (sex) => setState(s => ({ ...s, sex })), // === NEW ===
     reset: () => setState(initialState),
   };
 
