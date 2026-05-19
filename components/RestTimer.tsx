@@ -4,11 +4,12 @@
 // Countdown timer that runs between sets.
 // Self-contained: ticks down, fires a haptic at 0, supports −30/+30/Skip.
 // Mount with a fresh `key` to restart from totalSeconds.
+// === CHANGED === lime training-domain reskin
 
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { colors, radius, spacing, typography } from '../theme';
+import { tapLight, success } from '../lib/haptics'; // === CHANGED === project helpers replace raw expo-haptics
 
 type Props = {
   totalSeconds: number;
@@ -34,7 +35,7 @@ export function RestTimer({ totalSeconds, onSkip }: Props) {
         const next = Math.max(0, prev - 1);
         if (next === 0 && prev > 0) {
           // Just crossed zero — fire success haptic.
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          success(); // === CHANGED === use helper
         }
         return next;
       });
@@ -43,7 +44,13 @@ export function RestTimer({ totalSeconds, onSkip }: Props) {
   }, [isComplete]);
 
   function adjust(delta: number) {
+    tapLight(); // === NEW ===
     setSecondsLeft(s => Math.max(0, s + delta));
+  }
+
+  function handleSkip() {
+    tapLight(); // === NEW ===
+    onSkip();
   }
 
   const progress = totalSeconds > 0 ? 1 - secondsLeft / totalSeconds : 1;
@@ -76,7 +83,7 @@ export function RestTimer({ totalSeconds, onSkip }: Props) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onSkip} style={styles.skipBtn} activeOpacity={0.85}>
+          <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} activeOpacity={0.85}>
             <Text style={styles.skipText}>{isComplete ? 'Done' : 'Skip'}</Text>
           </TouchableOpacity>
 
@@ -97,15 +104,15 @@ const styles = StyleSheet.create({
   banner: {
     backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.surfaceElevated,
+    borderTopColor: colors.borderSubtle, // === CHANGED ===
   },
   progressTrack: {
     height: 3,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated, // keep — needs to be visible behind the fill on surface bg
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
   },
   row: {
     flexDirection: 'row',
@@ -119,13 +126,14 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
     marginBottom: 2,
+    letterSpacing: 1.5, // === NEW ===
   },
-  labelComplete: { color: colors.accent },
+  labelComplete: { color: colors.accentTrain }, // === CHANGED ===
   value: {
     ...typography.heading,
     color: colors.textPrimary,
   },
-  valueComplete: { color: colors.accent },
+  valueComplete: { color: colors.accentTrain }, // === CHANGED ===
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -151,13 +159,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
     minWidth: 60,
     alignItems: 'center',
   },
   skipText: {
     ...typography.bodyBold,
-    color: colors.onAccent,
+    color: colors.onAccentTrain, // === CHANGED ===
     fontSize: 13,
   },
 });
