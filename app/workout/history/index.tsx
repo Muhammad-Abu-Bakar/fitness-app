@@ -24,7 +24,8 @@ export default function WorkoutHistoryScreen() {
 
   if (!isLoaded) return null;
 
-  const completed = sessions.filter((s) => s.completedAt !== null);
+  // === CHANGED === filter out empty sessions — they clutter history with no value
+  const completed = sessions.filter((s) => s.completedAt !== null && s.sets.length > 0);
 
   // === NEW === light haptic on back nav
   const handleBack = () => {

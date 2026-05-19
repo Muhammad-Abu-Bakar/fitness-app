@@ -2,7 +2,7 @@
 // === CHANGED === cyan food-domain reskin
 import { useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Trash2 } from 'lucide-react-native'; // === NEW ===
 import { colors, spacing, radius, typography } from '../../theme';
@@ -38,9 +38,23 @@ export default function DayDetailScreen() {
   };
 
   // warning haptic on delete (same pattern as home)
-  const handleDeleteEntry = (id: string) => {
-    warning();
-    deleteEntry(id);
+  // === CHANGED === confirm before deleting (matches check-in dashboard pattern)
+  const handleDeleteEntry = (entry: typeof entries[number]) => {
+    Alert.alert(
+      'Delete this entry?',
+      `${entry.name} · ${entry.calories} kcal · ${entry.protein}g protein`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            warning();
+            deleteEntry(entry.id);
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -94,7 +108,7 @@ export default function DayDetailScreen() {
                 </View>
                 {/* === CHANGED === icon-based delete (matches check-in dashboard) */}
                 <TouchableOpacity
-                  onPress={() => handleDeleteEntry(entry.id)}
+                  onPress={() => handleDeleteEntry(entry)}
                   style={styles.deleteButton}
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

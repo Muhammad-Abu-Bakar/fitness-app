@@ -105,6 +105,16 @@ export default function SessionScreen() {
     if (!activeSession || !day) return;
     const id = activeSession.id;
 
+    // === NEW === block finishing a workout with zero sets logged
+    if (activeSession.sets.length === 0) {
+      warning();
+      Alert.alert(
+        'No sets logged',
+        'Log at least one set before finishing — otherwise this session won\'t mean anything.',
+      );
+      return;
+    }
+
     const performFinish = () => {
       success(); // === NEW === big win celebration haptic
       finishSession();
