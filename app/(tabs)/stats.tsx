@@ -1,4 +1,4 @@
-// === CHANGED === Stats day 1 — hero band + weight trend
+// === CHANGED === Stats day 2 — added Recent Workouts + Food Adherence sections
 import { useMemo } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -9,20 +9,38 @@ import { Scale, Dumbbell, ChevronRight, TrendingUp } from 'lucide-react-native';
 import { colors, spacing, radius, typography, dualGradient } from '../../theme';
 import { useCheckIn } from '../../context/checkIn';
 import { useWorkoutLog } from '../../context/workoutLog';
+import { useFoodLog } from '../../context/foodLog';
+import { useOnboarding } from '../../context/onboarding';
 import { getLatestCheckIn, getTotalChangeLbs, formatWeightChange } from '../../lib/checkIns/stats';
-import { formatDateLabel } from '../../lib/dates';
+import {
+  getSessionDurationSeconds,
+  formatDuration,
+  getSessionVolumeLbs,
+  getSessionSetCount,
+} from '../../lib/workouts/sessionStats';
+import { getProgramById } from '../../lib/workouts/programs';
+import { calculateTargets } from '../../lib/nutrition';
+import { formatDateLabel, getPastNDates } from '../../lib/dates';
+import type { WorkoutSession } from '../../lib/workouts/types';
 import { tapLight } from '../../lib/haptics';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_HEIGHT = 130;
-// Chart fits inside outer padding + card padding
 const CHART_WIDTH = SCREEN_WIDTH - (spacing.lg * 2) - (spacing.lg * 2);
 const MAX_CHART_POINTS = 8;
+const RECENT_WORKOUTS_LIMIT = 3;
+const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+
+function todayDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function StatsScreen() {
   const router = useRouter();
   const { checkIns, isLoaded: checkInsLoaded } = useCheckIn();
   const { sessions, isLoaded: sessionsLoaded } = useWorkoutLog();
+  const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
 
   // Hooks before any early returns
   const workoutsLast7Days = useMemo(() => {
@@ -38,9 +56,17 @@ export default function StatsScreen() {
       .slice(-MAX_CHART_POINTS);
   }, [checkIns]);
 
+  const targets = useMemo(() => {
+    if (
+      weightLbs === null || heightFt === null || heightIn === null ||
+      age === null || !activityLevel || !goal
+    ) return null;
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+
   if (!checkInsLoaded || !sessionsLoaded) return null;
 
-  // Derived values
+  // Derived
   const latest = getLatestCheckIn(checkIns);
   const totalChange = getTotalChangeLbs(checkIns);
   const hasMultipleCheckIns = checkIns.length >= 2;
@@ -48,7 +74,7 @@ export default function StatsScreen() {
     (s) => s.completedAt !== null && s.sets.length > 0,
   );
 
-  // Smart routing — go where it's useful based on state
+  // Nav
   const goCheckIn = () => {
     tapLight();
     router.push(checkIns.length > 0 ? '/check-in' : '/log-checkin');
@@ -57,16 +83,6 @@ export default function StatsScreen() {
     tapLight();
     router.push(hasAnyCompletedWorkout ? '/workout/history' : '/workouts');
   };
-  const goFoodHistory = () => {
-    tapLight();
-    router.push('/history');
-  };
-
-  const links = [
-    { label: 'Workout history', onPress: goWorkouts },
-    { label: 'Check-in history', onPress: goCheckIn },
-    { label: 'Food log history', onPress: goFoodHistory },
-  ];
 
   return (
     <View style={styles.container}>
@@ -86,7 +102,7 @@ export default function StatsScreen() {
           How body, food, and training are trending together.
         </Text>
 
-        {/* Hero band — weight + workouts side by side */}
+        {/* Hero band */}
         <View style={styles.heroBand}>
           {/* Weight card */}
           <TouchableOpacity style={styles.heroCardWrap} onPress={goCheckIn} activeOpacity={0.85}>
@@ -172,23 +188,186 @@ export default function StatsScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Quick links — temporary until we add Recent Workouts + Food Adherence sections */}
-        <Text style={styles.sectionHeaderQuiet}>MORE</Text>
-        <View style={styles.linksList}>
-          {links.map((link, i) => (
-            <TouchableOpacity
-              key={link.label}
-              style={[styles.linkRow, i === links.length - 1 && styles.linkRowLast]}
-              onPress={link.onPress}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.linkText}>{link.label}</Text>
-              <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* === NEW === Recent Workouts */}
+        <RecentWorkoutsSection />
+
+        {/* === NEW === Food Adherence (hidden if onboarding incomplete) */}
+        {targets && <FoodAdherenceSection proteinTarget={targets.protein} />}
       </ScrollView>
       <StatusBar style="light" />
+    </View>
+  );
+}
+
+// === NEW === Recent Workouts section
+function RecentWorkoutsSection() {
+  const router = useRouter();
+  const { sessions } = useWorkoutLog();
+
+  const completedSessions = useMemo(() => {
+    return sessions
+      .filter((s) => s.completedAt !== null && s.sets.length > 0)
+      .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
+  }, [sessions]);
+
+  const recent = completedSessions.slice(0, RECENT_WORKOUTS_LIMIT);
+  const hasMore = completedSessions.length > RECENT_WORKOUTS_LIMIT;
+
+  const goSession = (id: string) => {
+    tapLight();
+    router.push(`/workout/history/${id}`);
+  };
+  const goAll = () => {
+    tapLight();
+    router.push('/workout/history');
+  };
+  const goStart = () => {
+    tapLight();
+    router.push('/workouts');
+  };
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <View style={[styles.eyebrowBar, { backgroundColor: colors.accentTrain }]} />
+        <Text style={styles.sectionHeader}>RECENT WORKOUTS</Text>
+      </View>
+
+      {recent.length === 0 ? (
+        <View style={styles.sectionEmpty}>
+          <Dumbbell size={28} color={colors.textTertiary} strokeWidth={1.5} />
+          <Text style={styles.sectionEmptyTitle}>No workouts yet</Text>
+          <Text style={styles.sectionEmptyBody}>
+            Complete a workout and it'll show up here.
+          </Text>
+          <TouchableOpacity style={styles.linkRowInline} onPress={goStart} activeOpacity={0.7}>
+            <Text style={[styles.linkRowInlineText, { color: colors.accentTrain }]}>Browse programs</Text>
+            <ChevronRight size={14} color={colors.accentTrain} strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {recent.map((session) => (
+            <RecentWorkoutRow
+              key={session.id}
+              session={session}
+              onPress={() => goSession(session.id)}
+            />
+          ))}
+          {hasMore && (
+            <TouchableOpacity style={styles.linkRowInline} onPress={goAll} activeOpacity={0.7}>
+              <Text style={[styles.linkRowInlineText, { color: colors.accentTrain }]}>View all workouts</Text>
+              <ChevronRight size={14} color={colors.accentTrain} strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+function RecentWorkoutRow({
+  session,
+  onPress,
+}: {
+  session: WorkoutSession;
+  onPress: () => void;
+}) {
+  const program = getProgramById(session.programId);
+  const day = program?.days.find((d) => d.id === session.dayId);
+  const programName = program?.name ?? 'Workout';
+  const dayName = day?.name ?? session.dayId;
+
+  const duration = formatDuration(getSessionDurationSeconds(session));
+  const volume = getSessionVolumeLbs(session);
+  const sets = getSessionSetCount(session);
+
+  return (
+    <TouchableOpacity style={styles.recentRow} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.recentRowContent}>
+        <View style={styles.recentRowTop}>
+          <Text style={styles.recentRowDate}>{formatDateLabel(session.date)}</Text>
+          <Text style={styles.recentRowProgram} numberOfLines={1}>
+            {programName} · {dayName}
+          </Text>
+        </View>
+        <Text style={styles.recentRowStats}>
+          {duration} · {volume.toLocaleString()} lbs · {sets} {sets === 1 ? 'set' : 'sets'}
+        </Text>
+      </View>
+      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
+    </TouchableOpacity>
+  );
+}
+
+// === NEW === Food Adherence section
+function FoodAdherenceSection({ proteinTarget }: { proteinTarget: number }) {
+  const router = useRouter();
+  const { getTotalsForDate, getEntriesForDate } = useFoodLog();
+
+  const orderedDays = useMemo(() => {
+    // getPastNDates returns newest first; reverse for left-to-right oldest→today reading
+    return [...getPastNDates(7)].reverse();
+  }, []);
+
+  const today = todayDateString();
+
+  const dayData = orderedDays.map((date) => {
+    const totals = getTotalsForDate(date);
+    const entries = getEntriesForDate(date);
+    const hasEntries = entries.length > 0;
+    const hitProtein = hasEntries && totals.protein >= proteinTarget * 0.9;
+    const d = new Date(date + 'T00:00:00');
+    const letter = DAY_LETTERS[d.getDay()];
+    return { date, hasEntries, hitProtein, letter, isToday: date === today };
+  });
+
+  const hitCount = dayData.filter((d) => d.hitProtein).length;
+
+  const goFood = () => {
+    tapLight();
+    router.push('/history');
+  };
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <View style={[styles.eyebrowBar, { backgroundColor: colors.accentFood }]} />
+        <Text style={styles.sectionHeader}>FOOD ADHERENCE</Text>
+      </View>
+
+      <TouchableOpacity style={styles.adherenceCard} onPress={goFood} activeOpacity={0.85}>
+        <View style={styles.adherenceGrid}>
+          {dayData.map((d) => (
+            <View key={d.date} style={styles.adherenceCell}>
+              <Text
+                style={[
+                  styles.adherenceDayLabel,
+                  d.isToday && styles.adherenceDayLabelToday,
+                ]}
+              >
+                {d.letter}
+              </Text>
+              <View
+                style={[
+                  styles.adherenceDot,
+                  !d.hasEntries && styles.adherenceDotEmpty,
+                  d.hasEntries && !d.hitProtein && styles.adherenceDotPartial,
+                  d.hitProtein && styles.adherenceDotHit,
+                ]}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.adherenceFooter}>
+          <Text style={styles.adherenceFooterText}>
+            <Text style={styles.adherenceFooterCount}>{hitCount} of 7 days</Text>
+            {' '}hit protein target
+          </Text>
+          <ChevronRight size={14} color={colors.textTertiary} strokeWidth={2} />
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -198,7 +377,7 @@ function WeightTrendChart({ points }: { points: { weightLbs: number; date: strin
   const weights = points.map((p) => p.weightLbs);
   const min = Math.min(...weights);
   const max = Math.max(...weights);
-  const range = Math.max(0.5, max - min); // floor so flat trend doesn't divide by zero
+  const range = Math.max(0.5, max - min);
 
   const padding = 10;
   const innerW = CHART_WIDTH - padding * 2;
@@ -252,45 +431,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: 80,
   },
-  scroll: {
-    paddingBottom: 100, // tab bar clearance
-  },
+  scroll: { paddingBottom: 100 },
 
   // Header
-  eyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  eyebrowBar: {
-    width: 20,
-    height: 3,
-    borderRadius: 2,
-    marginRight: spacing.sm,
-  },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  eyebrowBar: { width: 20, height: 3, borderRadius: 2, marginRight: spacing.sm },
   eyebrow: {
     ...typography.bodyBold,
     color: colors.textPrimary,
     fontSize: 12,
     letterSpacing: 1.5,
   },
-  title: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
-  },
+  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
 
   // Hero band
-  heroBand: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
+  heroBand: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
   heroCardWrap: {
     flex: 1,
     borderRadius: radius.lg,
@@ -298,9 +454,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
   },
-  heroStripe: {
-    height: 4,
-  },
+  heroStripe: { height: 4 },
   heroCardInner: {
     backgroundColor: colors.surface,
     padding: spacing.md,
@@ -312,11 +466,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.md,
   },
-  heroLabel: {
-    ...typography.bodyBold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-  },
+  heroLabel: { ...typography.bodyBold, fontSize: 11, letterSpacing: 1.5 },
   heroValue: {
     fontSize: 36,
     fontWeight: '900',
@@ -329,36 +479,19 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     lineHeight: 40,
   },
-  heroUnit: {
-    color: colors.textTertiary,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  heroSubLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: spacing.xs,
-  },
+  heroUnit: { color: colors.textTertiary, fontSize: 13, marginTop: 2 },
+  heroSubLabel: { color: colors.textSecondary, fontSize: 12, marginTop: spacing.xs },
 
-  // Section header
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
+  // Generic section header
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   sectionHeader: {
     ...typography.bodyBold,
     color: colors.textPrimary,
     fontSize: 12,
     letterSpacing: 1.5,
   },
-  sectionHeaderQuiet: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    letterSpacing: 1.5,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-  },
+  // === NEW === wrapper for sub-sections so each gets bottom spacing
+  section: { marginTop: spacing.xl },
 
   // Trend card
   trendCard: {
@@ -374,21 +507,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
   },
-  trendSmallLabel: {
-    color: colors.textTertiary,
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
+  trendSmallLabel: { color: colors.textTertiary, fontSize: 11, letterSpacing: 0.5 },
   trendSmallValue: {
     ...typography.bodyBold,
     color: colors.textPrimary,
     fontSize: 14,
     marginTop: 2,
   },
-  trendEmpty: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
+  trendEmpty: { alignItems: 'center', paddingVertical: spacing.lg },
   trendEmptyTitle: {
     ...typography.bodyBold,
     color: colors.textPrimary,
@@ -401,28 +527,112 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Quick links
-  linksList: {
+  // === NEW === Recent Workouts
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(163,230,53,0.18)', // 18% lime — domain mark
+    marginBottom: spacing.sm,
+  },
+  recentRowContent: { flex: 1 },
+  recentRowTop: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    marginBottom: 2,
+    flexWrap: 'wrap',
+  },
+  recentRowDate: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 15 },
+  recentRowProgram: { color: colors.textSecondary, fontSize: 13 },
+  recentRowStats: { color: colors.textTertiary, fontSize: 12 },
+
+  // Inline "view all" / "browse programs" link rows
+  linkRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  linkRowInlineText: { ...typography.bodyBold, fontSize: 13 },
+
+  // Empty section state
+  sectionEmpty: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    overflow: 'hidden',
   },
-  linkRow: {
+  sectionEmptyTitle: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  sectionEmptyBody: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontSize: 14,
+  },
+
+  // === NEW === Food Adherence
+  adherenceCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  adherenceGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  adherenceCell: { alignItems: 'center', gap: spacing.sm },
+  adherenceDayLabel: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
+    fontWeight: '700',
+  },
+  adherenceDayLabelToday: { color: colors.accentFood },
+  adherenceDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  adherenceDotEmpty: {
+    backgroundColor: 'transparent',
+    borderColor: colors.borderDefault,
+  },
+  adherenceDotPartial: {
+    backgroundColor: 'rgba(34,211,238,0.25)',
+    borderColor: 'rgba(34,211,238,0.40)',
+  },
+  adherenceDotHit: {
+    backgroundColor: colors.accentFood,
+    borderColor: colors.accentFood,
+  },
+  adherenceFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
-  linkRowLast: {
-    borderBottomWidth: 0,
+  adherenceFooterText: {
+    color: colors.textSecondary,
+    fontSize: 14,
   },
-  linkText: {
-    ...typography.body,
+  adherenceFooterCount: {
+    ...typography.bodyBold,
     color: colors.textPrimary,
   },
 });
