@@ -1,4 +1,4 @@
-// === CHANGED === fixes ScrollView under keyboard (scrollOuter style)
+// === CHANGED === lime training-domain reskin
 import { StatusBar } from 'expo-status-bar';
 import { useState, useRef, useEffect } from 'react';
 import {
@@ -7,12 +7,13 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { X, Check, ChevronLeft, ChevronRight } from 'lucide-react-native'; // === NEW ===
 import { colors, spacing, radius, typography } from '../../theme';
 import { useWorkoutLog } from '../../context/workoutLog';
 import { getProgramById } from '../../lib/workouts/programs';
 import type { Exercise, LoggedSet } from '../../lib/workouts/types';
 import { RestTimer } from '../../components/RestTimer';
+import { tapLight, success, warning } from '../../lib/haptics'; // === CHANGED === use project helpers instead of raw expo-haptics
 
 export default function SessionScreen() {
   const router = useRouter();
@@ -50,11 +51,15 @@ export default function SessionScreen() {
         <View style={styles.emptyContent}>
           <Text style={styles.emptyText}>No active workout.</Text>
           <TouchableOpacity
-            onPress={() => router.replace('/workouts')}
+            onPress={() => {
+              tapLight();
+              router.replace('/workouts');
+            }}
             style={styles.emptyButton}
             activeOpacity={0.85}
           >
-            <Text style={styles.emptyButtonText}>← Back to workouts</Text>
+            <ChevronLeft size={18} color={colors.onAccentTrain} strokeWidth={2.5} />
+            <Text style={styles.emptyButtonText}>Back to workouts</Text>
           </TouchableOpacity>
         </View>
         <StatusBar style="light" />
@@ -68,6 +73,7 @@ export default function SessionScreen() {
   const isLastExercise = currentExerciseIndex === totalExercises - 1;
 
   function handleClose() {
+    tapLight(); // === NEW ===
     Alert.alert(
       'Exit workout?',
       'Your progress is saved — you can resume any time.',
@@ -84,6 +90,7 @@ export default function SessionScreen() {
           text: 'Discard workout',
           style: 'destructive',
           onPress: () => {
+            warning(); // === NEW ===
             cancelActiveSession();
             if (router.canGoBack()) router.back();
             else router.replace('/workouts');
@@ -99,6 +106,7 @@ export default function SessionScreen() {
     const id = activeSession.id;
 
     const performFinish = () => {
+      success(); // === NEW === big win celebration haptic
       finishSession();
       router.replace({
         pathname: '/workout/complete',
@@ -134,8 +142,14 @@ export default function SessionScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
-          <Text style={styles.closeIcon}>✕</Text>
+        {/* === CHANGED === slim 40x40 borderSubtle close button with X icon */}
+        <TouchableOpacity
+          onPress={handleClose}
+          style={styles.closeButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <X size={20} color={colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
         <View style={styles.headerText}>
           <Text style={styles.eyebrow}>
@@ -158,7 +172,7 @@ export default function SessionScreen() {
           onLogSet={(weight, reps) => {
             const setNumber = getSetsForExercise(currentExercise.id).length + 1;
             logSet(currentExercise.id, setNumber, weight, reps);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            tapLight(); // === CHANGED === use helper
             setRestKey(k => k + 1);
             setRestActive(true);
           }}
@@ -175,25 +189,35 @@ export default function SessionScreen() {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity
-          onPress={() => setCurrentExerciseIndex(i => Math.max(0, i - 1))}
+          onPress={() => {
+            tapLight();
+            setCurrentExerciseIndex(i => Math.max(0, i - 1));
+          }}
           disabled={isFirstExercise}
           style={[styles.navButton, isFirstExercise && styles.navButtonDisabled]}
           activeOpacity={0.7}
         >
+          <ChevronLeft
+            size={16}
+            color={isFirstExercise ? colors.textTertiary : colors.textPrimary}
+            strokeWidth={2.5}
+          />
           <Text style={[styles.navButtonText, isFirstExercise && styles.navButtonTextDisabled]}>
-            ← Prev
+            Prev
           </Text>
         </TouchableOpacity>
 
         {!isLastExercise ? (
           <TouchableOpacity
-            onPress={() => setCurrentExerciseIndex(i => Math.min(totalExercises - 1, i + 1))}
+            onPress={() => {
+              tapLight();
+              setCurrentExerciseIndex(i => Math.min(totalExercises - 1, i + 1));
+            }}
             style={[styles.navButton, styles.navButtonPrimary]}
             activeOpacity={0.7}
           >
-            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>
-              Next →
-            </Text>
+            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>Next</Text>
+            <ChevronRight size={16} color={colors.onAccentTrain} strokeWidth={2.5} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -201,9 +225,8 @@ export default function SessionScreen() {
             style={[styles.navButton, styles.navButtonPrimary]}
             activeOpacity={0.85}
           >
-            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>
-              Finish workout →
-            </Text>
+            <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>Finish workout</Text>
+            <ChevronRight size={16} color={colors.onAccentTrain} strokeWidth={2.5} />
           </TouchableOpacity>
         )}
       </View>
@@ -240,10 +263,12 @@ function ExerciseSection({
     const weight = parseFloat(weightInput);
     const reps = parseInt(repsInput, 10);
     if (isNaN(weight) || weight <= 0) {
+      warning(); // === NEW ===
       Alert.alert('Enter a weight', 'Weight must be greater than 0.');
       return;
     }
     if (isNaN(reps) || reps <= 0) {
+      warning(); // === NEW ===
       Alert.alert('Enter reps', 'Reps must be greater than 0.');
       return;
     }
@@ -270,7 +295,8 @@ function ExerciseSection({
             <Text style={styles.setDoneText}>
               {set.weightLbs} lbs × {set.reps} reps
             </Text>
-            <Text style={styles.setCheck}>✓</Text>
+            {/* === CHANGED === lime Check icon */}
+            <Check size={18} color={colors.accentTrain} strokeWidth={2.5} />
           </View>
         ))}
 
@@ -311,7 +337,11 @@ function ExerciseSection({
 
         {isComplete && (
           <View style={styles.completeBox}>
-            <Text style={styles.completeText}>✓ Exercise complete</Text>
+            {/* === CHANGED === Check icon + text row */}
+            <View style={styles.completeRow}>
+              <Check size={20} color={colors.accentTrain} strokeWidth={2.5} />
+              <Text style={styles.completeText}>Exercise complete</Text>
+            </View>
             <Text style={styles.completeSubtext}>
               Tap the button below to continue.
             </Text>
@@ -325,7 +355,7 @@ function ExerciseSection({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSolid, // === CHANGED ===
     paddingTop: 80,
   },
   header: {
@@ -335,17 +365,23 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.md,
   },
+  // === CHANGED === slim 40x40 borderSubtle close button (was 44x44 filled circle)
   closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
-  closeIcon: { fontSize: 18, color: colors.textPrimary },
   headerText: { flex: 1 },
-  eyebrow: { ...typography.caption, color: colors.accent, marginBottom: spacing.xs },
+  eyebrow: {
+    ...typography.caption,
+    color: colors.accentTrain, // === CHANGED === lime
+    marginBottom: spacing.xs,
+    letterSpacing: 1.5, // === NEW ===
+  },
   title: { ...typography.title, color: colors.textPrimary },
 
   scrollOuter: { flex: 1 },
@@ -382,26 +418,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     gap: spacing.md,
   },
-  setRowDone: { backgroundColor: colors.surface },
+  setRowDone: {
+    backgroundColor: colors.surface,
+    borderWidth: 1, // === NEW ===
+    borderColor: colors.borderSubtle, // === NEW ===
+  },
   setRowActive: {
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.accentTrain, // === CHANGED === lime focus border
   },
   setNumber: {
     ...typography.caption,
     color: colors.textTertiary,
     width: 50,
+    letterSpacing: 1.5, // === NEW ===
   },
   setDoneText: {
     ...typography.bodyBold,
     color: colors.textPrimary,
     flex: 1,
-  },
-  setCheck: {
-    fontSize: 20,
-    color: colors.success,
-    fontWeight: '700',
   },
 
   inputs: {
@@ -413,7 +449,7 @@ const styles = StyleSheet.create({
   input: {
     ...typography.bodyBold,
     color: colors.textPrimary,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSolid, // === CHANGED ===
     borderRadius: radius.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -426,7 +462,7 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   logSetButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
@@ -435,7 +471,7 @@ const styles = StyleSheet.create({
   },
   logSetButtonText: {
     ...typography.bodyBold,
-    color: colors.onAccent,
+    color: colors.onAccentTrain, // === CHANGED ===
   },
 
   completeBox: {
@@ -444,11 +480,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     alignItems: 'center',
     marginTop: spacing.sm,
+    borderWidth: 1, // === NEW ===
+    borderColor: colors.borderSubtle, // === NEW ===
+  },
+  // === NEW === row for Check icon + headline
+  completeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   completeText: {
     ...typography.heading,
-    color: colors.success,
-    marginBottom: spacing.xs,
+    color: colors.accentTrain, // === CHANGED === lime instead of generic success
   },
   completeSubtext: {
     ...typography.body,
@@ -463,23 +507,31 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.surface,
-    backgroundColor: colors.background,
+    borderTopColor: colors.borderSubtle, // === CHANGED ===
+    backgroundColor: colors.backgroundSolid, // === CHANGED ===
   },
   navButton: {
     flex: 1,
+    flexDirection: 'row', // === NEW === for icon + label
     paddingVertical: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs, // === NEW ===
+    borderWidth: 1, // === NEW ===
+    borderColor: colors.borderSubtle, // === NEW ===
   },
-  navButtonPrimary: { backgroundColor: colors.accent },
+  navButtonPrimary: {
+    backgroundColor: colors.accentTrain, // === CHANGED ===
+    borderColor: colors.accentTrain, // === NEW === border matches fill
+  },
   navButtonDisabled: { opacity: 0.4 },
   navButtonText: {
     ...typography.button,
     color: colors.textPrimary,
   },
-  navButtonTextPrimary: { color: colors.onAccent },
+  navButtonTextPrimary: { color: colors.onAccentTrain }, // === CHANGED ===
   navButtonTextDisabled: { color: colors.textTertiary },
 
   emptyContent: {
@@ -494,13 +546,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyButton: {
-    backgroundColor: colors.accent,
+    flexDirection: 'row', // === NEW ===
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
   },
   emptyButtonText: {
     ...typography.button,
-    color: colors.onAccent,
+    color: colors.onAccentTrain, // === CHANGED ===
   },
 });
