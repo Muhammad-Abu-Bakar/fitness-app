@@ -1,10 +1,13 @@
+// === CHANGED === reskin — slim back, progress dots, dual eyebrow, gradient-ring selected cards + CTA
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, radius, typography } from '../../theme';
-// === NEW === import context hook + Goal type
+import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { colors, spacing, radius, typography, dualGradient } from '../../theme';
 import { useOnboarding, Goal } from '../../context/onboarding';
+import { tapLight, tapMedium } from '../../lib/haptics';
 
 type GoalOption = { id: Goal; title: string; description: string };
 
@@ -14,15 +17,26 @@ const GOALS: GoalOption[] = [
   { id: 'exploring', title: 'Just exploring', description: "I'm not sure yet — show me what's possible" },
 ];
 
+const TRANSPARENT_GRADIENT = ['transparent', 'transparent'] as const;
+
 export default function GoalScreen() {
   const router = useRouter();
-  // === NEW === read setter from context
   const { setGoal } = useOnboarding();
   const [selected, setSelected] = useState<Goal | null>(null);
 
-  // === CHANGED === save to context + navigate
+  const handleBack = () => {
+    tapLight();
+    router.back();
+  };
+
+  const handleSelect = (id: Goal) => {
+    tapLight();
+    setSelected(id);
+  };
+
   const handleContinue = () => {
     if (!selected) return;
+    tapMedium();
     setGoal(selected);
     router.push('/onboarding/stats');
   };
@@ -30,7 +44,27 @@ export default function GoalScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.step}>STEP 1 OF 4</Text>
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          </TouchableOpacity>
+          <ProgressDots current={0} total={4} />
+        </View>
+
+        <View style={styles.eyebrowRow}>
+          <LinearGradient
+            colors={dualGradient.colors}
+            start={dualGradient.start}
+            end={dualGradient.end}
+            style={styles.eyebrowBar}
+          />
+          <Text style={styles.eyebrow}>YOUR GOAL</Text>
+        </View>
         <Text style={styles.title}>What's your goal?</Text>
         <Text style={styles.subtitle}>We'll tune your calorie and protein targets to match.</Text>
 
@@ -40,40 +74,122 @@ export default function GoalScreen() {
             return (
               <TouchableOpacity
                 key={goal.id}
-                style={[styles.card, isSelected && styles.cardSelected]}
-                onPress={() => setSelected(goal.id)}
+                onPress={() => handleSelect(goal.id)}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{goal.title}</Text>
-                <Text style={styles.cardDescription}>{goal.description}</Text>
+                <LinearGradient
+                  colors={isSelected ? dualGradient.colors : TRANSPARENT_GRADIENT}
+                  start={dualGradient.start}
+                  end={dualGradient.end}
+                  style={styles.cardRing}
+                >
+                  <View style={[styles.cardInner, !isSelected && styles.cardInnerUnselected]}>
+                    <Text style={styles.cardTitle}>{goal.title}</Text>
+                    <Text style={styles.cardDescription}>{goal.description}</Text>
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
             );
           })}
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={[styles.button, !selected && styles.buttonDisabled]} onPress={handleContinue} disabled={!selected} activeOpacity={0.85}>
-        <Text style={styles.buttonText}>Continue</Text>
-      </TouchableOpacity>
+      <LinearGradient
+        colors={dualGradient.colors}
+        start={dualGradient.start}
+        end={dualGradient.end}
+        style={[styles.ctaRing, !selected && styles.ctaDisabled]}
+      >
+        <TouchableOpacity
+          style={styles.ctaInner}
+          onPress={handleContinue}
+          disabled={!selected}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaText}>Continue</Text>
+          <ChevronRight size={18} color={colors.textPrimary} strokeWidth={2.5} />
+        </TouchableOpacity>
+      </LinearGradient>
 
       <StatusBar style="light" />
     </View>
   );
 }
 
+function ProgressDots({ current, total }: { current: number; total: number }) {
+  return (
+    <View style={styles.dots}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 80, paddingBottom: spacing.xl },
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundSolid,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 60,
+    paddingBottom: spacing.xl,
+  },
   scroll: { paddingBottom: spacing.lg },
-  step: { ...typography.caption, color: colors.accent, marginBottom: spacing.md },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xl,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  dots: { flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.surfaceElevated },
+  dotActive: { width: 24, height: 6, backgroundColor: colors.textPrimary },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  eyebrowBar: { width: 20, height: 3, borderRadius: 2, marginRight: spacing.sm },
+  eyebrow: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
   title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
   options: { gap: spacing.md },
-  card: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 2, borderColor: colors.surface },
-  cardSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceElevated },
+  cardRing: {
+    borderRadius: radius.lg,
+    padding: 1.5,
+  },
+  cardInner: {
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg - 1.5,
+  },
+  cardInnerUnselected: {
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    // negate the 1.5 padding from cardRing visually
+  },
   cardTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.xs },
-  cardTitleSelected: { color: colors.accent },
   cardDescription: { ...typography.body, color: colors.textSecondary },
-  button: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { ...typography.button, color: colors.onAccent },
+  ctaRing: { borderRadius: radius.lg, padding: 1.5 },
+  ctaDisabled: { opacity: 0.4 },
+  ctaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 18,
+    borderRadius: radius.lg - 1.5,
+  },
+  ctaText: { ...typography.button, color: colors.textPrimary },
 });

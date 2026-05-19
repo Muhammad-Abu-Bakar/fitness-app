@@ -1,10 +1,13 @@
-// === NEW === onboarding step 3 — activity level for TDEE estimate
+// === CHANGED === reskin — same pattern as goal screen
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, radius, typography } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { colors, spacing, radius, typography, dualGradient } from '../../theme';
 import { useOnboarding, ActivityLevel } from '../../context/onboarding';
+import { tapLight, tapMedium } from '../../lib/haptics';
 
 type ActivityOption = { id: ActivityLevel; title: string; description: string };
 
@@ -15,13 +18,26 @@ const ACTIVITIES: ActivityOption[] = [
   { id: 'active', title: 'Very active', description: 'Hard exercise 6-7 days a week' },
 ];
 
+const TRANSPARENT_GRADIENT = ['transparent', 'transparent'] as const;
+
 export default function ActivityScreen() {
   const router = useRouter();
   const { setActivityLevel } = useOnboarding();
   const [selected, setSelected] = useState<ActivityLevel | null>(null);
 
+  const handleBack = () => {
+    tapLight();
+    router.back();
+  };
+
+  const handleSelect = (id: ActivityLevel) => {
+    tapLight();
+    setSelected(id);
+  };
+
   const handleContinue = () => {
     if (!selected) return;
+    tapMedium();
     setActivityLevel(selected);
     router.push('/onboarding/target');
   };
@@ -29,7 +45,31 @@ export default function ActivityScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.step}>STEP 3 OF 4</Text>
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          </TouchableOpacity>
+          <View style={styles.dots}>
+            {[0, 1, 2, 3].map((i) => (
+              <View key={i} style={[styles.dot, i === 2 && styles.dotActive]} />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.eyebrowRow}>
+          <LinearGradient
+            colors={dualGradient.colors}
+            start={dualGradient.start}
+            end={dualGradient.end}
+            style={styles.eyebrowBar}
+          />
+          <Text style={styles.eyebrow}>ACTIVITY</Text>
+        </View>
         <Text style={styles.title}>How active are you?</Text>
         <Text style={styles.subtitle}>Include workouts, walking, and physical work.</Text>
 
@@ -37,18 +77,44 @@ export default function ActivityScreen() {
           {ACTIVITIES.map((option) => {
             const isSelected = selected === option.id;
             return (
-              <TouchableOpacity key={option.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => setSelected(option.id)} activeOpacity={0.85}>
-                <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{option.title}</Text>
-                <Text style={styles.cardDescription}>{option.description}</Text>
+              <TouchableOpacity
+                key={option.id}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={isSelected ? dualGradient.colors : TRANSPARENT_GRADIENT}
+                  start={dualGradient.start}
+                  end={dualGradient.end}
+                  style={styles.cardRing}
+                >
+                  <View style={[styles.cardInner, !isSelected && styles.cardInnerUnselected]}>
+                    <Text style={styles.cardTitle}>{option.title}</Text>
+                    <Text style={styles.cardDescription}>{option.description}</Text>
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
             );
           })}
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={[styles.button, !selected && styles.buttonDisabled]} onPress={handleContinue} disabled={!selected} activeOpacity={0.85}>
-        <Text style={styles.buttonText}>Continue</Text>
-      </TouchableOpacity>
+      <LinearGradient
+        colors={dualGradient.colors}
+        start={dualGradient.start}
+        end={dualGradient.end}
+        style={[styles.ctaRing, !selected && styles.ctaDisabled]}
+      >
+        <TouchableOpacity
+          style={styles.ctaInner}
+          onPress={handleContinue}
+          disabled={!selected}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaText}>Continue</Text>
+          <ChevronRight size={18} color={colors.textPrimary} strokeWidth={2.5} />
+        </TouchableOpacity>
+      </LinearGradient>
 
       <StatusBar style="light" />
     </View>
@@ -56,18 +122,65 @@ export default function ActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: 80, paddingBottom: spacing.xl },
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundSolid,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 60,
+    paddingBottom: spacing.xl,
+  },
   scroll: { paddingBottom: spacing.lg },
-  step: { ...typography.caption, color: colors.accent, marginBottom: spacing.md },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xl,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  dots: { flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.surfaceElevated },
+  dotActive: { width: 24, height: 6, backgroundColor: colors.textPrimary },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  eyebrowBar: { width: 20, height: 3, borderRadius: 2, marginRight: spacing.sm },
+  eyebrow: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
   title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
   options: { gap: spacing.md },
-  card: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 2, borderColor: colors.surface },
-  cardSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceElevated },
+  cardRing: { borderRadius: radius.lg, padding: 1.5 },
+  cardInner: {
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg - 1.5,
+  },
+  cardInnerUnselected: {
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
   cardTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.xs },
-  cardTitleSelected: { color: colors.accent },
   cardDescription: { ...typography.body, color: colors.textSecondary },
-  button: { backgroundColor: colors.accent, paddingVertical: 18, borderRadius: radius.lg, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { ...typography.button, color: colors.onAccent },
+  ctaRing: { borderRadius: radius.lg, padding: 1.5 },
+  ctaDisabled: { opacity: 0.4 },
+  ctaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 18,
+    borderRadius: radius.lg - 1.5,
+  },
+  ctaText: { ...typography.button, color: colors.textPrimary },
 });
