@@ -3,15 +3,17 @@
 //
 // Celebration screen shown right after a workout finishes.
 // Reads the just-completed session by id (passed as a URL param).
+// === CHANGED === lime training-domain reskin (hero moment of the training flow)
 
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { Home, ChevronLeft } from 'lucide-react-native'; // === NEW ===
 import { colors, radius, spacing, typography } from '../../theme';
 import { useWorkoutLog } from '../../context/workoutLog';
 import { getProgramById } from '../../lib/workouts/programs';
+import { tapLight, tapMedium, success } from '../../lib/haptics'; // === CHANGED === use helpers
 
 export default function CompleteScreen() {
   const router = useRouter();
@@ -21,12 +23,12 @@ export default function CompleteScreen() {
   // Find the session by id. Fallback to newest in case of a param issue.
   const session = sessions.find(s => s.id === sessionId) ?? sessions[0];
 
-  // === CHANGED === delay the haptic so it fires AFTER the screen transition lands.
+  // Delay the haptic so it fires AFTER the screen transition lands.
   // iOS suppresses haptics during view animations, so firing immediately on mount
   // often gets swallowed silently.
   useEffect(() => {
     const t = setTimeout(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      success(); // === CHANGED === use helper
     }, 500);
     return () => clearTimeout(t);
   }, []);
@@ -37,11 +39,15 @@ export default function CompleteScreen() {
         <View style={styles.emptyContent}>
           <Text style={styles.emptyText}>Couldn't find workout data.</Text>
           <TouchableOpacity
-            onPress={() => router.replace('/home')}
+            onPress={() => {
+              tapLight();
+              router.replace('/home');
+            }}
             style={styles.emptyButton}
             activeOpacity={0.85}
           >
-            <Text style={styles.emptyButtonText}>← Back to home</Text>
+            <ChevronLeft size={18} color={colors.onAccentTrain} strokeWidth={2.5} />
+            <Text style={styles.emptyButtonText}>Back to home</Text>
           </TouchableOpacity>
         </View>
         <StatusBar style="light" />
@@ -69,20 +75,27 @@ export default function CompleteScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.celebration}>
-          <Text style={styles.emoji}>💪</Text>
+          {/* === CHANGED === emoji inside lime halo ring (hero brand mark) */}
+          <View style={styles.emojiRing}>
+            <Text style={styles.emoji}>💪</Text>
+          </View>
           <Text style={styles.title}>Workout complete!</Text>
           <Text style={styles.subtitle}>{dayName}</Text>
         </View>
 
-        <View style={styles.statsCard}>
-          <StatItem label="sets logged" value={totalSets.toString()} />
-          <View style={styles.divider} />
-          <StatItem label="lbs lifted" value={totalVolume.toLocaleString()} />
-          <View style={styles.divider} />
-          <StatItem
-            label={durationMinutes === 1 ? 'minute' : 'minutes'}
-            value={durationMinutes.toString()}
-          />
+        {/* === CHANGED === stats card with lime top stripe */}
+        <View style={styles.statsCardWrap}>
+          <View style={styles.statsStripe} />
+          <View style={styles.statsCard}>
+            <StatItem label="sets logged" value={totalSets.toString()} />
+            <View style={styles.divider} />
+            <StatItem label="lbs lifted" value={totalVolume.toLocaleString()} />
+            <View style={styles.divider} />
+            <StatItem
+              label={durationMinutes === 1 ? 'minute' : 'minutes'}
+              value={durationMinutes.toString()}
+            />
+          </View>
         </View>
 
         <Text style={styles.encouragement}>
@@ -92,9 +105,13 @@ export default function CompleteScreen() {
 
       <TouchableOpacity
         style={styles.homeButton}
-        onPress={() => router.replace('/home')}
+        onPress={() => {
+          tapMedium(); // === NEW ===
+          router.replace('/home');
+        }}
         activeOpacity={0.85}
       >
+        <Home size={18} color={colors.onAccentTrain} strokeWidth={2.5} />
         <Text style={styles.homeButtonText}>Back to home</Text>
       </TouchableOpacity>
 
@@ -115,7 +132,7 @@ function StatItem({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSolid, // === CHANGED ===
     paddingHorizontal: spacing.lg,
     paddingTop: 80,
     paddingBottom: spacing.xl,
@@ -129,31 +146,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
+  // === NEW === lime halo ring around the emoji
+  emojiRing: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(163,230,53,0.10)', // lime at 10%
+    borderWidth: 1,
+    borderColor: 'rgba(163,230,53,0.25)', // lime at 25%
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
   emoji: {
-    fontSize: 64,
-    marginBottom: spacing.md,
+    fontSize: 56,
   },
   title: {
     ...typography.display,
     fontSize: 40,
     lineHeight: 48,
-    color: colors.textPrimary,
+    color: colors.textPrimary, // white display title — pops against dark bg
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   subtitle: {
     ...typography.heading,
-    color: colors.accent,
+    color: colors.accentTrain, // === CHANGED === lime (training accent)
     textAlign: 'center',
   },
 
+  // === NEW === stats card with lime top stripe
+  statsCardWrap: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  statsStripe: {
+    height: 4,
+    backgroundColor: colors.accentTrain, // === NEW === lime brand stripe
+  },
   statsCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
     paddingVertical: spacing.lg,
-    marginBottom: spacing.xl,
   },
   stat: { flex: 1, alignItems: 'center' },
   statValue: {
@@ -166,11 +204,12 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.caption,
     color: colors.textTertiary,
+    letterSpacing: 1.5, // === NEW ===
   },
   divider: {
     width: 1,
     height: 48,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.borderSubtle, // === CHANGED ===
   },
 
   encouragement: {
@@ -182,15 +221,18 @@ const styles = StyleSheet.create({
   },
 
   homeButton: {
-    backgroundColor: colors.accent,
+    flexDirection: 'row', // === NEW === for icon + text
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
     paddingVertical: 18,
     borderRadius: radius.lg,
-    alignItems: 'center',
     marginTop: spacing.md,
   },
   homeButtonText: {
     ...typography.button,
-    color: colors.onAccent,
+    color: colors.onAccentTrain, // === CHANGED ===
   },
 
   emptyContent: {
@@ -204,13 +246,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyButton: {
-    backgroundColor: colors.accent,
+    flexDirection: 'row', // === NEW ===
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.accentTrain, // === CHANGED ===
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
   },
   emptyButtonText: {
     ...typography.button,
-    color: colors.onAccent,
+    color: colors.onAccentTrain, // === CHANGED ===
   },
 });
