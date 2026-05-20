@@ -49,9 +49,8 @@ export default function TargetScreen() {
 
   const handleContinue = () => {
     if (!isValid) return;
-    success(); // big milestone — finishing onboarding
     setTargetWeight(targetN);
-    router.replace('/home');
+    router.push('/onboarding/done'); // push so done screen handles the celebration + replace
   };
 
   return (
@@ -70,8 +69,8 @@ export default function TargetScreen() {
             <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.dots}>
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={[styles.dot, i === 3 && styles.dotActive]} />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.dot, i === 4 && styles.dotActive]} />
             ))}
           </View>
         </View>

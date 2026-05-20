@@ -1,4 +1,4 @@
-// === CHANGED === reskin — slim back, progress dots, dual eyebrow, gradient-ring selected cards + CTA
+// === NEW === onboarding step 2 — sex picker with avatar previews
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,39 +6,37 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { colors, spacing, radius, typography, dualGradient } from '../../theme';
-import { useOnboarding, Goal } from '../../context/onboarding';
+import { useOnboarding, type Sex } from '../../context/onboarding';
+import { AvatarSvg } from '../../components/AvatarSvg';
 import { tapLight, tapMedium } from '../../lib/haptics';
-
-type GoalOption = { id: Goal; title: string; description: string };
-
-const GOALS: GoalOption[] = [
-  { id: 'bulk', title: 'Bulk up', description: 'Gain weight and muscle as fast as possible' },
-  { id: 'lean', title: 'Lean gains', description: 'Build muscle while staying lean' },
-  { id: 'exploring', title: 'Just exploring', description: "I'm not sure yet — show me what's possible" },
-];
 
 const TRANSPARENT_GRADIENT = ['transparent', 'transparent'] as const;
 
-export default function GoalScreen() {
+const OPTIONS: { value: Sex; label: string }[] = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+];
+
+export default function SexScreen() {
   const router = useRouter();
-  const { setGoal } = useOnboarding();
-  const [selected, setSelected] = useState<Goal | null>(null);
+  const { setSex } = useOnboarding();
+  const [selected, setSelected] = useState<Sex | null>(null);
 
   const handleBack = () => {
     tapLight();
     router.back();
   };
 
-  const handleSelect = (id: Goal) => {
+  const handleSelect = (s: Sex) => {
     tapLight();
-    setSelected(id);
+    setSelected(s);
   };
 
   const handleContinue = () => {
     if (!selected) return;
     tapMedium();
-    setGoal(selected);
-    router.push('/onboarding/sex');
+    setSex(selected);
+    router.push('/onboarding/stats');
   };
 
   return (
@@ -53,7 +51,11 @@ export default function GoalScreen() {
           >
             <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
-          <ProgressDots current={0} total={5} />
+          <View style={styles.dots}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.dot, i === 1 && styles.dotActive]} />
+            ))}
+          </View>
         </View>
 
         <View style={styles.eyebrowRow}>
@@ -63,18 +65,21 @@ export default function GoalScreen() {
             end={dualGradient.end}
             style={styles.eyebrowBar}
           />
-          <Text style={styles.eyebrow}>YOUR GOAL</Text>
+          <Text style={styles.eyebrow}>ABOUT YOU</Text>
         </View>
-        <Text style={styles.title}>What's your goal?</Text>
-        <Text style={styles.subtitle}>We'll tune your calorie and protein targets to match.</Text>
+        <Text style={styles.title}>What's your sex?</Text>
+        <Text style={styles.subtitle}>
+          We'll use this to personalize your daily targets and avatar.
+        </Text>
 
-        <View style={styles.options}>
-          {GOALS.map((goal) => {
-            const isSelected = selected === goal.id;
+        <View style={styles.cardRow}>
+          {OPTIONS.map((opt) => {
+            const isSelected = selected === opt.value;
             return (
               <TouchableOpacity
-                key={goal.id}
-                onPress={() => handleSelect(goal.id)}
+                key={opt.value}
+                style={styles.cardOuter}
+                onPress={() => handleSelect(opt.value)}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -84,8 +89,10 @@ export default function GoalScreen() {
                   style={styles.cardRing}
                 >
                   <View style={[styles.cardInner, !isSelected && styles.cardInnerUnselected]}>
-                    <Text style={styles.cardTitle}>{goal.title}</Text>
-                    <Text style={styles.cardDescription}>{goal.description}</Text>
+                    <View style={styles.avatarHole}>
+                      <AvatarSvg sex={opt.value} color={colors.textPrimary} size={84} />
+                    </View>
+                    <Text style={styles.cardLabel}>{opt.label}</Text>
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
@@ -112,16 +119,6 @@ export default function GoalScreen() {
       </LinearGradient>
 
       <StatusBar style="light" />
-    </View>
-  );
-}
-
-function ProgressDots({ current, total }: { current: number; total: number }) {
-  return (
-    <View style={styles.dots}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
-      ))}
     </View>
   );
 }
@@ -163,23 +160,38 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
-  options: { gap: spacing.md },
-  cardRing: {
-    borderRadius: radius.lg,
-    padding: 1.5,
-  },
+
+  // Side-by-side avatar cards
+  cardRow: { flexDirection: 'row', gap: spacing.md },
+  cardOuter: { flex: 1 },
+  cardRing: { borderRadius: radius.lg, padding: 1.5 },
   cardInner: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.lg - 1.5,
+    alignItems: 'center',
+    gap: spacing.md,
   },
   cardInnerUnselected: {
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    // negate the 1.5 padding from cardRing visually
   },
-  cardTitle: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.xs },
-  cardDescription: { ...typography.body, color: colors.textSecondary },
+  avatarHole: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cardLabel: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    fontSize: 16,
+  },
+
   ctaRing: { borderRadius: radius.lg, padding: 1.5 },
   ctaDisabled: { opacity: 0.4 },
   ctaInner: {
