@@ -8,6 +8,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Keyboa
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius, typography } from '../theme';
 import { useFoodLog, getTodayDateString } from '../context/foodLog';
+import { lookupFood } from '../lib/foodLookup'; // === NEW ===
 // === CHANGED === added tapLight for the cancel button; success was already here
 import { tapLight, success } from '../lib/haptics';
 
@@ -18,6 +19,8 @@ export default function LogFoodScreen() {
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
+  // === NEW === tracks which food was recognized, for the small hint under the input
+  const [matchedFood, setMatchedFood] = useState<string | null>(null);
 
   const caloriesN = parseFloat(calories);
   const proteinN = parseFloat(protein);
@@ -27,6 +30,28 @@ export default function LogFoodScreen() {
     !isNaN(caloriesN) && caloriesN >= 0 && caloriesN <= 5000 &&
     !isNaN(proteinN) && proteinN >= 0 && proteinN <= 500;
 
+    // === NEW === auto-fill calories + protein when the name matches a known food.
+  // Runs on every keystroke — the lookup is just an in-memory loop, very fast.
+  // === NEW === auto-fill calories + protein when the name matches a known food.
+  // Runs on every keystroke — the lookup is just an in-memory loop, very fast.
+  const handleNameChange = (value: string) => {
+    setName(value);
+    // === NEW === clear auto-filled numbers when the field is emptied
+    if (value.trim() === '') {
+      setCalories('');
+      setProtein('');
+      setMatchedFood(null);
+      return;
+    }
+    const result = lookupFood(value);
+    if (result.matched) {
+      setCalories(String(result.calories));
+      setProtein(String(result.protein));
+      setMatchedFood(result.foodName);
+    } else {
+      setMatchedFood(null);
+    }
+  };
   // === NEW === cancel button gets a light haptic, consistent with rest of app
   const handleCancel = () => {
     tapLight();
@@ -63,13 +88,17 @@ export default function LogFoodScreen() {
             <TextInput
               style={styles.input}
               value={name}
-              onChangeText={setName}
-              placeholder="Chicken & rice, whey shake…"
+              onChangeText={handleNameChange} // === CHANGED ===
+              placeholder="Try '250g chicken' or '2 eggs'…" // === CHANGED === hints at the new feature
               placeholderTextColor={colors.textTertiary}
               autoFocus
               returnKeyType="next"
             />
           </View>
+          {/* === NEW === subtle confirmation that auto-fill ran */}
+          {matchedFood && (
+            <Text style={styles.matchedHint}>✓ Auto-filled from {matchedFood}</Text>
+          )}
         </View>
 
         <View style={styles.fieldRow}>
@@ -156,6 +185,8 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, ...typography.body, color: colors.textPrimary, paddingVertical: 14, fontSize: 18 },
   unit: { ...typography.body, color: colors.textTertiary, marginLeft: spacing.sm },
+  // === NEW === subtle cyan hint under the name field when auto-fill fires
+  matchedHint: { ...typography.caption, color: colors.accentFood, marginTop: spacing.sm },
 
   // === CHANGED === save button is solid cyan with dark text (was yellow)
   button: {
