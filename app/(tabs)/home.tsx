@@ -11,7 +11,7 @@ import { HomeHero } from '../../components/HomeHero';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
+  const { goal, weightLbs, heightFt, heightIn, age, activityLevel, sex } = useOnboarding();
 
   const { getTotalsForDate, getEntriesForDate, deleteEntry } = useFoodLog();
   const todayTotals = getTotalsForDate(getTodayDateString());
@@ -24,8 +24,8 @@ export default function HomeScreen() {
     ) {
       return null;
     }
-    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
-  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal, sex);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal, sex]);
 
   useEffect(() => {
     if (targets !== null) return;

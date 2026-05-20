@@ -40,7 +40,7 @@ export default function StatsScreen() {
   const router = useRouter();
   const { checkIns, isLoaded: checkInsLoaded } = useCheckIn();
   const { sessions, isLoaded: sessionsLoaded } = useWorkoutLog();
-  const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
+  const { goal, weightLbs, heightFt, heightIn, age, activityLevel, sex } = useOnboarding();
 
   // Hooks before any early returns
   const workoutsLast7Days = useMemo(() => {
@@ -61,8 +61,8 @@ export default function StatsScreen() {
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) return null;
-    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
-  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal, sex);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal, sex]);
 
   if (!checkInsLoaded || !sessionsLoaded) return null;
 

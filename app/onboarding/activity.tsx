@@ -55,8 +55,8 @@ export default function ActivityScreen() {
             <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.dots}>
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={[styles.dot, i === 2 && styles.dotActive]} />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.dot, i === 3 && styles.dotActive]} />
             ))}
           </View>
         </View>

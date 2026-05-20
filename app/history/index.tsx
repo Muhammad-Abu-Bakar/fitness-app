@@ -15,15 +15,15 @@ import { tapLight, tapMedium } from '../../lib/haptics';
 export default function HistoryScreen() {
   const router = useRouter();
   const { getTotalsForDate, getEntriesForDate } = useFoodLog();
-  const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
+  const { goal, weightLbs, heightFt, heightIn, age, activityLevel, sex } = useOnboarding();
 
   const targets = useMemo(() => {
     if (
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) return null;
-    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
-  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal, sex);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal, sex]);
 
   if (!targets) return null;
 

@@ -24,6 +24,7 @@ export default function DoneScreen() {
     age,
     activityLevel,
     targetWeightLbs,
+    sex,
   } = useOnboarding();
 
   const targets = useMemo(() => {
@@ -31,8 +32,8 @@ export default function DoneScreen() {
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) return null;
-    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
-  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal, sex);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal, sex]);
 
   if (!loaded) return null;
   // Safety fallback — if somehow we landed here without data, bounce home

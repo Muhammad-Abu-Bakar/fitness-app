@@ -16,15 +16,15 @@ export default function DayDetailScreen() {
   const router = useRouter();
   const { date } = useLocalSearchParams<{ date: string }>();
   const { getEntriesForDate, getTotalsForDate, deleteEntry } = useFoodLog();
-  const { goal, weightLbs, heightFt, heightIn, age, activityLevel } = useOnboarding();
+  const { goal, weightLbs, heightFt, heightIn, age, activityLevel, sex } = useOnboarding();
 
   const targets = useMemo(() => {
     if (
       weightLbs === null || heightFt === null || heightIn === null ||
       age === null || !activityLevel || !goal
     ) return null;
-    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal);
-  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal]);
+    return calculateTargets(weightLbs, heightFt, heightIn, age, activityLevel, goal, sex);
+  }, [weightLbs, heightFt, heightIn, age, activityLevel, goal, sex]);
 
   if (!targets || !date) return null;
 
