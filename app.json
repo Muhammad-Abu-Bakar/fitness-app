@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bulkify.app"
+      "bundleIdentifier": "app.bulkify.fit"
     },
     "android": {
-      "package": "com.bulkify.app",
+      "package": "app.bulkify.fit",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0A"
